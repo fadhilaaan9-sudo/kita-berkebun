@@ -41,8 +41,11 @@ const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer }),
 });
 
-// filterBy(["farmCode"]): tamu dengan kode yang sama masuk ke room yang sudah
-// ada, bukan membuat room baru.
+// filterBy(["farmCode"]): tamu yang joinOrCreate dengan kode yang sama
+// diarahkan ke room yang SUDAH ADA (bukan bikin baru). PENTING: pencocokan
+// dilakukan terhadap OPSI PEMBUATAN room (tersimpan di listing saat room
+// dibuat), jadi host wajib mengirim farmCode asli di opsi create —
+// kode yang di-generate di dalam onCreate tidak akan ikut tercocokkan.
 gameServer.define("farm_room", FarmRoom).filterBy(["farmCode"]);
 
 await gameServer.listen(port);

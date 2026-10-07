@@ -6,6 +6,8 @@ import {
   MSG,
   Plot,
   Player,
+  generateJoinCode,
+  sanitizeJoinCode,
   type AnimalKind,
   type AnimalPayload,
   type CropKind,
@@ -13,7 +15,6 @@ import {
   type PlantPayload,
   type PlotPayload,
 } from "@kebun-kita/shared";
-import { generateJoinCode } from "../utils/joinCode.js";
 
 const GRID_SIZE = 8; // kebun 8x8 petak
 const MAX_CLIENTS = 4;
@@ -38,7 +39,11 @@ export class FarmRoom extends Room<FarmState> {
   maxClients = MAX_CLIENTS;
 
   onCreate(options: JoinOptions) {
-    const farmCode = (options.farmCode || generateJoinCode()).toUpperCase();
+    // Kode normalnya sudah di-generate client dan terkirim lewat opsi
+    // pembuatan room (lihat createFarm di client). Fallback di sini
+    // hanya untuk jaga-jaga kalau opsi kosong/tidak valid.
+    let farmCode = sanitizeJoinCode(options.farmCode);
+    if (farmCode.length !== 6) farmCode = generateJoinCode();
     this.setMetadata({ farmCode });
     this.setState(new FarmState());
     this.state.farmCode = farmCode;

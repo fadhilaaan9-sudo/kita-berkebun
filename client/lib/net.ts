@@ -1,5 +1,5 @@
 import { Client, Room } from "colyseus.js";
-import type { FarmState } from "@kebun-kita/shared";
+import { generateJoinCode, type FarmState } from "@kebun-kita/shared";
 
 let client: Client | null = null;
 
@@ -16,9 +16,19 @@ export function getClient(): Client {
   return client;
 }
 
-/** Host membuat kebun baru — server yang generate kode 6 digit. */
+/** Host membuat kebun baru.
+ *
+ *  Kode di-generate di CLIENT dan dikirim sebagai opsi pembuatan room.
+ *  Ini penting: Colyseus filterBy() mencocokkan tamu berdasarkan OPSI
+ *  PEMBUATAN room (yang tersimpan di listing), bukan berdasarkan metadata
+ *  atau state yang di-set di onCreate. Kalau kode di-generate di server
+ *  (di dalam onCreate), listing room tercatat dengan farmCode kosong dan
+ *  tamu tidak akan pernah menemukan room yang benar — mereka malah
+ *  dibuatkan room baru yang kebetulan kodenya sama!
+ */
 export async function createFarm(name: string): Promise<Room<FarmState>> {
-  return getClient().create<FarmState>("farm_room", { name, farmCode: "" });
+  const farmCode = generateJoinCode();
+  return getClient().create<FarmState>("farm_room", { name, farmCode });
 }
 
 /** Tamu gabung pakai kode. Kode dicek dulu via HTTP supaya salah ketik
