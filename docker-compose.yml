@@ -1,0 +1,21 @@
+# Database & cache — dibutuhkan mulai milestone persistensi (M4).
+# Untuk skeleton MVP ini belum dipakai; jalankan dengan: docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kebunkita
+      POSTGRES_PASSWORD: kebunkita
+      POSTGRES_DB: kebunkita
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata: {}
