@@ -37,3 +37,25 @@ export async function joinFarm(code: string, name: string): Promise<Room<FarmSta
   if (!exists) throw new Error("Kode kebun tidak ditemukan. Cek lagi ya.");
   return getClient().joinOrCreate<FarmState>("farm_room", { name, farmCode: clean });
 }
+
+/**
+ * Tunggu sampai state awal benar-benar terisi datanya.
+ *
+ * Colyseus me-resolve create()/joinOrCreate() begitu handshake JOIN_ROOM
+ * selesai — saat itu room.state sudah ada bentuknya (keys-nya ada) tapi
+ * semua valuenya masih undefined. Isi aslinya datang sesaat setelahnya
+ * lewat pesan ROOM_STATE pertama. Baca state sebelum itu = crash
+ * "Cannot read properties of undefined (reading 'values')".
+ */
+export function waitForInitialState(room: Room<FarmState>, timeoutMs = 8000): Promise<void> {
+  if (room.state && room.state.players !== undefined) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Gagal menerima data kebun dari server. Coba lagi."));
+    }, timeoutMs);
+    room.onStateChange.once(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}

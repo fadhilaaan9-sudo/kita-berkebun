@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Room } from "colyseus.js";
 import { CROPS, FarmState, type CropKind } from "@kebun-kita/shared";
-import { createFarm, joinFarm } from "@/lib/net";
+import { createFarm, joinFarm, waitForInitialState } from "@/lib/net";
 import FarmScene from "@/components/FarmScene";
 
 function errMsg(e: unknown): string {
@@ -24,6 +24,8 @@ export default function Home() {
 
   const attach = (r: Room<FarmState>) => {
     const sync = () => {
+      // Jaga-jaga: state bisa belum lengkap saat callback pertama
+      if (!r.state || r.state.players === undefined) return;
       setCoins(r.state.coins);
       setFarmCode(r.state.farmCode);
       setPlayers(
@@ -39,9 +41,21 @@ export default function Home() {
   const handleCreate = async () => {
     setError("");
     setBusy(true);
+    let r: Room<FarmState> | null = null;
     try {
-      attach(await createFarm(name.trim() || "Petani"));
+      r = await createFarm(name.trim() || "Petani");
+      await waitForInitialState(r);
+      attach(r);
     } catch (e) {
+      // Bersihkan room yang gagal attach supaya tidak jadi room zombie di server
+      if (r) {
+        try {
+          await r.leave();
+        } catch {
+          /* abaikan */
+        }
+        r.removeAllListeners();
+      }
       setError(errMsg(e));
     } finally {
       setBusy(false);
@@ -51,9 +65,20 @@ export default function Home() {
   const handleJoin = async () => {
     setError("");
     setBusy(true);
+    let r: Room<FarmState> | null = null;
     try {
-      attach(await joinFarm(code, name.trim() || "Petani"));
+      r = await joinFarm(code, name.trim() || "Petani");
+      await waitForInitialState(r);
+      attach(r);
     } catch (e) {
+      if (r) {
+        try {
+          await r.leave();
+        } catch {
+          /* abaikan */
+        }
+        r.removeAllListeners();
+      }
       setError(errMsg(e));
     } finally {
       setBusy(false);

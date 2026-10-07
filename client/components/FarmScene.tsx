@@ -41,6 +41,7 @@ function MyAvatar({ room, keys }: { room: Room<FarmState>; keys: React.MutableRe
   const camTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
+    if (!room.state || room.state.players === undefined) return;
     const me = room.state.players.get(room.sessionId);
     if (me) pos.current = { x: me.x, z: me.z };
   }, [room]);
@@ -173,6 +174,10 @@ export default function FarmScene({ room, crop }: { room: Room<FarmState>; crop:
   useEffect(() => {
     room.onStateChange(() => setRev((v) => v + 1));
   }, [room]);
+
+  // State awal Colyseus tiba sesaat setelah join (bentuknya ada, isinya
+  // menyusul) — jangan render scene sebelum datanya lengkap.
+  if (!room.state || room.state.players === undefined) return null;
 
   return (
     <Canvas camera={{ position: [0, 13, 16], fov: 50 }}>
