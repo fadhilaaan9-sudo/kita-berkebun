@@ -25,6 +25,7 @@ bebas dipakai untuk proyek pribadi maupun komersial, tanpa atribusi wajib.
 | `fence_simple.glb` | Kenney Nature Kit | Pagar kebun |
 | `animal-cow.glb` | [Kenney Cube Pets](https://kenney.nl/assets/cube-pets) | Sapi (animasi: idle, walk, eat, ...) |
 | `animal-chick.glb` | Kenney Cube Pets | Ayam (animasi: idle, walk, eat, ...) |
+| `character-a.glb` (+ `Textures/texture-a.png`) | [Kenney Blocky Characters](https://kenney.nl/assets/blocky-characters) | Avatar pemain (animasi: idle, walk, ...) |
 
 Unduhan: 2026-10-08. File-file di atas adalah subset kecil (~400 KB) dari kedua pack;
 pack lengkapnya bisa diunduh ulang dari tautan di atas bila butuh model tambahan.

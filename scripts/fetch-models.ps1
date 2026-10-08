@@ -42,6 +42,7 @@ try {
 
     Get-KenneyZip "nature-kit" "$tmp\nature.zip"
     Get-KenneyZip "cube-pets" "$tmp\cubepets.zip"
+    Get-KenneyZip "blocky-characters" "$tmp\blocky.zip"
 
     New-Item -ItemType Directory -Path (Join-Path $dest "Textures") -Force | Out-Null
 
@@ -62,6 +63,13 @@ try {
     ) $dest
     Expand-Selected "$tmp\cubepets.zip" @(
         "Models/GLB format/Textures/colormap.png"
+    ) $dest "Textures"
+
+    Expand-Selected "$tmp\blocky.zip" @(
+        "Models/GLB format/character-a.glb"
+    ) $dest
+    Expand-Selected "$tmp\blocky.zip" @(
+        "Models/GLB format/Textures/texture-a.png"
     ) $dest "Textures"
 
     Write-Host "OK -> $dest"

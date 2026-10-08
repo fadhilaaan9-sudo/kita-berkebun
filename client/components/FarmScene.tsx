@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Room } from "colyseus.js";
 import { FarmState, MSG, type CropKind, type Plot } from "@kebun-kita/shared";
-import { AnimalModel, FenceBorder, PlotModel } from "./FarmModels";
+import { AnimalModel, FenceBorder, PlayerModel, PlotModel } from "./FarmModels";
 
 function useKeys() {
   const keys = useRef<Record<string, boolean>>({});
@@ -28,15 +28,19 @@ function useKeys() {
 
 /** Avatar pemain sendiri: gerak lokal (responsif) + kirim posisi ke server. */
 function MyAvatar({ room, keys }: { room: Room<FarmState>; keys: React.MutableRefObject<Record<string, boolean>> }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const pos = useRef({ x: 0, z: 5 });
+  const [pos, setPos] = useState({ x: 0, z: 5 });
+  const posRef = useRef(pos);
+  const [mv, setMv] = useState({ moving: false, fx: 0, fz: 1 });
   const lastSent = useRef(0);
   const camTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (!room.state || room.state.players === undefined) return;
     const me = room.state.players.get(room.sessionId);
-    if (me) pos.current = { x: me.x, z: me.z };
+    if (me) {
+      posRef.current = { x: me.x, z: me.z };
+      setPos({ x: me.x, z: me.z });
+    }
   }, [room]);
 
   useFrame((state, dt) => {
@@ -48,27 +52,48 @@ function MyAvatar({ room, keys }: { room: Room<FarmState>; keys: React.MutableRe
     if (k["s"] || k["arrowdown"]) dz += 1;
     if (k["a"] || k["arrowleft"]) dx -= 1;
     if (k["d"] || k["arrowright"]) dx += 1;
-    if (dx !== 0 || dz !== 0) {
+    const moving = dx !== 0 || dz !== 0;
+    if (moving) {
       const len = Math.hypot(dx, dz);
-      pos.current.x = THREE.MathUtils.clamp(pos.current.x + (dx / len) * speed * dt, -14, 14);
-      pos.current.z = THREE.MathUtils.clamp(pos.current.z + (dz / len) * speed * dt, -14, 14);
+      const nx = THREE.MathUtils.clamp(posRef.current.x + (dx / len) * speed * dt, -14, 14);
+      const nz = THREE.MathUtils.clamp(posRef.current.z + (dz / len) * speed * dt, -14, 14);
+      posRef.current = { x: nx, z: nz };
+      setPos({ x: nx, z: nz });
       const now = performance.now();
       if (now - lastSent.current > 100) {
         lastSent.current = now;
-        room.send(MSG.MOVE, { x: pos.current.x, z: pos.current.z });
+        room.send(MSG.MOVE, { x: nx, z: nz });
       }
     }
-    if (ref.current) ref.current.position.set(pos.current.x, 0.6, pos.current.z);
-    camTarget.current.set(pos.current.x, 13, pos.current.z + 11);
+    setMv((m) => {
+      if (m.moving === moving && (!moving || (m.fx === dx && m.fz === dz))) return m;
+      return { moving, fx: moving ? dx : m.fx, fz: moving ? dz : m.fz };
+    });
+    camTarget.current.set(posRef.current.x, 13, posRef.current.z + 11);
     state.camera.position.lerp(camTarget.current, 0.08);
-    state.camera.lookAt(pos.current.x, 0, pos.current.z);
+    state.camera.lookAt(posRef.current.x, 0, posRef.current.z);
   });
 
   return (
-    <mesh ref={ref} position={[pos.current.x, 0.6, pos.current.z]}>
-      <capsuleGeometry args={[0.35, 0.7, 4, 12]} />
-      <meshStandardMaterial color="#e8833a" />
-    </mesh>
+    <PlayerModel x={pos.x} z={pos.z} moving={mv.moving} faceX={mv.fx} faceZ={mv.fz} ringColor="#e8833a" />
+  );
+}
+
+function OtherPlayer({ p, ringColor }: { p: { id: string; x: number; z: number }; ringColor: string }) {
+  const prev = useRef({ x: p.x, z: p.z });
+  const [mv, setMv] = useState({ moving: false, fx: 0, fz: 1 });
+  useEffect(() => {
+    const dx = p.x - prev.current.x;
+    const dz = p.z - prev.current.z;
+    prev.current = { x: p.x, z: p.z };
+    const moving = dx !== 0 || dz !== 0;
+    setMv((m) => {
+      if (m.moving === moving && (!moving || (m.fx === dx && m.fz === dz))) return m;
+      return { moving, fx: moving ? dx : m.fx, fz: moving ? dz : m.fz };
+    });
+  }, [p.x, p.z]);
+  return (
+    <PlayerModel x={p.x} z={p.z} moving={mv.moving} faceX={mv.fx} faceZ={mv.fz} ringColor={ringColor} />
   );
 }
 
@@ -77,10 +102,7 @@ function OtherAvatars({ room }: { room: Room<FarmState> }) {
   return (
     <>
       {players.map((p) => (
-        <mesh key={p.id} position={[p.x, 0.6, p.z]}>
-          <capsuleGeometry args={[0.35, 0.7, 4, 12]} />
-          <meshStandardMaterial color={p.isHost ? "#b64400" : "#3a7bd5"} />
-        </mesh>
+        <OtherPlayer key={p.id} p={p} ringColor={p.isHost ? "#b64400" : "#3a7bd5"} />
       ))}
     </>
   );

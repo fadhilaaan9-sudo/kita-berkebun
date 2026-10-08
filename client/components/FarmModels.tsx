@@ -21,8 +21,11 @@ const ANIMAL_MODEL: Record<AnimalKind, string> = {
   chicken: `${M}/animal-chick.glb`,
 };
 
+const PLAYER_URL = `${M}/character-a.glb`;
+
 // Preload supaya tidak ada pop-in saat model pertama kali dipakai.
 useGLTF.preload(DIRT);
+useGLTF.preload(PLAYER_URL);
 Object.values(CROP_MODEL).forEach(({ young, mature }) => {
   useGLTF.preload(young);
   useGLTF.preload(mature);
@@ -156,4 +159,57 @@ export function FenceBorder() {
 /** Bungkus Suspense untuk semua pemakaian model di scene. */
 export function ModelSuspense({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
+}
+
+/** Avatar pemain: karakter Kenney + animasi jalan/diam + cincin warna identitas. */
+export function PlayerModel({
+  x,
+  z,
+  moving,
+  faceX,
+  faceZ,
+  ringColor,
+}: {
+  x: number;
+  z: number;
+  moving: boolean;
+  faceX: number;
+  faceZ: number;
+  ringColor: string;
+}) {
+  const { scene, animations } = useGLTF(PLAYER_URL);
+  const clone = useMemo(() => scene.clone(), [scene]);
+  const inner = useRef<THREE.Group>(null);
+  const { actions } = useAnimations(animations, inner);
+  const faceRef = useRef(0);
+  if (faceX !== 0 || faceZ !== 0) faceRef.current = Math.atan2(faceX, faceZ);
+
+  useEffect(() => {
+    const a = actions[moving ? "walk" : "idle"];
+    a?.reset().fadeIn(0.2).play();
+    return () => {
+      a?.fadeOut(0.2);
+    };
+  }, [actions, moving]);
+
+  // hadap ke arah gerak dengan halus
+  useFrame((_, dt) => {
+    if (!inner.current) return;
+    const cur = inner.current.rotation.y;
+    let d = faceRef.current - cur;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    inner.current.rotation.y = cur + d * Math.min(1, dt * 10);
+  });
+
+  return (
+    <group position={[x, 0, z]}>
+      <group ref={inner} scale={0.6}>
+        <primitive object={clone} />
+      </group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[0.5, 0.68, 24]} />
+        <meshBasicMaterial color={ringColor} transparent opacity={0.9} />
+      </mesh>
+    </group>
+  );
 }

@@ -21,6 +21,11 @@ curl -sSL -A "$UA" "https://kenney.nl/assets/cube-pets" -o "$TMP/cp.html"
 CP_ZIP="$(grep -o 'https://kenney.nl/media/pages/assets/cube-pets/[^"]*\.zip' "$TMP/cp.html" | head -1)"
 curl -sSL -A "$UA" "$CP_ZIP" -o "$TMP/cubepets.zip"
 
+echo "-> Kenney Blocky Characters ..."
+curl -sSL -A "$UA" "https://kenney.nl/assets/blocky-characters" -o "$TMP/bc.html"
+BC_ZIP="$(grep -o 'https://kenney.nl/media/pages/assets/blocky-characters/[^"]*\.zip' "$TMP/bc.html" | head -1)"
+curl -sSL -A "$UA" "$BC_ZIP" -o "$TMP/blocky.zip"
+
 mkdir -p "$DEST/Textures"
 
 unzip -o -j "$TMP/nature.zip" \
@@ -41,6 +46,14 @@ unzip -o -j "$TMP/cubepets.zip" \
   -d "$TMP/cp" > /dev/null
 cp "$TMP/cp/animal-cow.glb" "$TMP/cp/animal-chick.glb" "$DEST/"
 cp "$TMP/cp/colormap.png" "$DEST/Textures/"
+
+unzip -o -j "$TMP/blocky.zip" \
+  "Models/GLB format/character-a.glb" \
+  -d "$DEST" > /dev/null
+unzip -o -j "$TMP/blocky.zip" \
+  "Models/GLB format/Textures/texture-a.png" \
+  -d "$TMP/bc" > /dev/null
+cp "$TMP/bc/texture-a.png" "$DEST/Textures/"
 
 echo "OK -> $DEST"
 ls "$DEST"
