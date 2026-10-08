@@ -9,6 +9,11 @@ export const MSG = {
   HARVEST: "harvest",
   FEED: "feed",
   COLLECT: "collect",
+  SHOP_BUY: "shop_buy",
+  SHOP_SELL: "shop_sell",
+  UPGRADE_BAG: "upgrade_bag",
+  /** server → client: pesan kegagalan/info untuk ditampilkan sebagai toast */
+  NOTICE: "notice",
 } as const;
 
 export interface MovePayload {
@@ -27,4 +32,13 @@ export interface PlantPayload {
 
 export interface AnimalPayload {
   animalId: string;
+}
+
+export interface ShopPayload {
+  itemId: string;
+  qty: number;
+}
+
+export interface NoticePayload {
+  text: string;
 }

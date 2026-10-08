@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Room } from "colyseus.js";
 import { FarmState, MSG, type CropKind, type Plot } from "@kebun-kita/shared";
-import { AnimalModel, FenceBorder, PlayerModel, PlotModel } from "./FarmModels";
+import { AnimalModel, AnimalPen, FenceBorder, PlayerModel, PlotModel } from "./FarmModels";
 
 function useKeys() {
   const keys = useRef<Record<string, boolean>>({});
@@ -160,7 +160,85 @@ function House() {
   );
 }
 
-export default function FarmScene({ room, crop }: { room: Room<FarmState>; crop: CropKind }) {
+/** Kios: bangunan code-drawn se-gaya rumah; diklik untuk buka toko. */
+function Kiosk({ onOpen }: { onOpen: () => void }) {
+  const posts: [number, number][] = [
+    [-1.3, -0.9],
+    [1.3, -0.9],
+    [-1.3, 0.9],
+    [1.3, 0.9],
+  ];
+  return (
+    <group
+      position={[9.5, 0, 5]}
+      rotation={[0, -Math.PI / 5, 0]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+    >
+      {posts.map(([x, z], i) => (
+        <mesh key={i} position={[x, 1, z]}>
+          <boxGeometry args={[0.18, 2, 0.18]} />
+          <meshStandardMaterial color="#7a5230" />
+        </mesh>
+      ))}
+      {/* atap bergaris oranye-putih */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <mesh key={`r${i}`} position={[-1.375 + i * 0.55, 2.25, 0]} rotation={[0.12, 0, 0]}>
+          <boxGeometry args={[0.55, 0.08, 2.4]} />
+          <meshStandardMaterial color={i % 2 === 0 ? "#e8833a" : "#f7f3ea"} />
+        </mesh>
+      ))}
+      {/* meja */}
+      <mesh position={[0, 0.55, 0.4]}>
+        <boxGeometry args={[2.6, 0.5, 1]} />
+        <meshStandardMaterial color="#a06a35" />
+      </mesh>
+      <mesh position={[0, 0.85, 0.4]}>
+        <boxGeometry args={[2.6, 0.08, 1]} />
+        <meshStandardMaterial color="#c08a4d" />
+      </mesh>
+      {/* dagangan: labu & telur di atas meja */}
+      <mesh position={[-0.7, 1.05, 0.4]}>
+        <sphereGeometry args={[0.22, 10, 8]} />
+        <meshStandardMaterial color="#e08a2d" />
+      </mesh>
+      <mesh position={[0.1, 1.0, 0.4]}>
+        <sphereGeometry args={[0.22, 10, 8]} />
+        <meshStandardMaterial color="#e08a2d" />
+      </mesh>
+      <mesh position={[0.8, 1.0, 0.35]}>
+        <sphereGeometry args={[0.16, 10, 8]} />
+        <meshStandardMaterial color="#fff6e8" />
+      </mesh>
+      <mesh position={[0.8, 1.0, 0.55]}>
+        <sphereGeometry args={[0.16, 10, 8]} />
+        <meshStandardMaterial color="#fff6e8" />
+      </mesh>
+      {/* papan nama */}
+      <mesh position={[0, 1.9, -1.05]}>
+        <boxGeometry args={[1.6, 0.5, 0.08]} />
+        <meshStandardMaterial color="#f2c14e" />
+      </mesh>
+      {/* hitbox */}
+      <mesh position={[0, 1.2, 0]}>
+        <boxGeometry args={[3.2, 2.6, 2.8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+export default function FarmScene({
+  room,
+  crop,
+  onOpenKiosk,
+}: {
+  room: Room<FarmState>;
+  crop: CropKind;
+  onOpenKiosk: () => void;
+}) {
   const keys = useKeys();
   // render ulang tiap ada patch state dari server
   const [, setRev] = useState(0);
@@ -185,6 +263,10 @@ export default function FarmScene({ room, crop }: { room: Room<FarmState>; crop:
         <Plots room={room} crop={crop} />
         <Animals room={room} />
         <FenceBorder />
+        {/* kandang sapi & ayam (cocok dengan batas jalan server) */}
+        <AnimalPen cx={-5.5} cz={6.75} hw={2.5} hd={1.75} />
+        <AnimalPen cx={6.75} cz={-5.5} hw={1.75} hd={2.5} />
+        <Kiosk onOpen={onOpenKiosk} />
       </Suspense>
       <House />
       <MyAvatar room={room} keys={keys} />

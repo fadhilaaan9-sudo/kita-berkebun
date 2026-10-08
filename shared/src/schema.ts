@@ -13,6 +13,38 @@ export const CROPS = {
 } as const;
 export type CropKind = keyof typeof CROPS;
 
+/** Bibit: dibeli di kios, dikonsumsi saat menanam. */
+export const SEEDS = {
+  seed_gandum: { crop: "gandum" as CropKind, price: 5, label: "Bibit Gandum", emoji: "🌾" },
+  seed_wortel: { crop: "wortel" as CropKind, price: 10, label: "Bibit Wortel", emoji: "🥕" },
+  seed_labu: { crop: "labu" as CropKind, price: 20, label: "Bibit Labu", emoji: "🎃" },
+} as const;
+export type SeedKind = keyof typeof SEEDS;
+
+/** Pakan: dibeli di kios, dikonsumsi saat memberi makan. */
+export const FEEDS = {
+  feed_chicken: { animal: "chicken" as const, price: 2, label: "Pakan Ayam", emoji: "🌽" },
+  feed_cow: { animal: "cow" as const, price: 3, label: "Pakan Sapi", emoji: "🥬" },
+} as const;
+export type FeedKind = keyof typeof FEEDS;
+
+/** Hasil: didapat dari panen/koleksi, dijual di kios. */
+export const PRODUCE = {
+  prod_gandum: { sellPrice: 12, label: "Gandum", emoji: "🌾" },
+  prod_wortel: { sellPrice: 25, label: "Wortel", emoji: "🥕" },
+  prod_labu: { sellPrice: 55, label: "Labu", emoji: "🎃" },
+  egg: { sellPrice: 5, label: "Telur", emoji: "🥚" },
+  milk: { sellPrice: 15, label: "Susu", emoji: "🥛" },
+} as const;
+export type ProduceKind = keyof typeof PRODUCE;
+
+/** Berapa kali pakan per siklus sampai hasil mulai diproduksi (GDD). */
+export const FEEDS_NEEDED: Record<AnimalKind, number> = { chicken: 1, cow: 2 };
+
+export const BAG_SLOTS_1 = 12;
+export const BAG_SLOTS_2 = 20;
+export const BAG_UPGRADE_COST = 150;
+
 export type PlotState = "wild" | "tilled" | "planted" | "ready";
 export type AnimalKind = "cow" | "chicken";
 
@@ -36,16 +68,24 @@ export class Plot extends Schema {
   @type("number") plantedAt: number = 0;
 }
 
+export class InventoryItem extends Schema {
+  @type("string") id: string = "";
+  @type("number") qty: number = 0;
+}
+
 export class Animal extends Schema {
   @type("string") id: string = "";
   @type("string") kind: AnimalKind = "cow";
   @type("number") x: number = 0;
   @type("number") z: number = 0;
-  /** 0–100, kalau rendah hewan berhenti menghasilkan */
-  @type("number") hunger: number = 100;
+  /** target jalan acak di dalam kandang */
+  @type("number") tx: number = 0;
+  @type("number") tz: number = 0;
+  /** berapa kali sudah diberi pakan di siklus ini */
+  @type("number") feedsGiven: number = 0;
+  /** timestamp (ms) saat kebutuhan pakan siklus ini terpenuhi */
+  @type("number") fedAt: number = 0;
   @type("boolean") produceReady: boolean = false;
-  /** timestamp (ms) terakhir hasil diambil */
-  @type("number") lastCollected: number = 0;
 }
 
 export class FarmState extends Schema {
@@ -55,4 +95,7 @@ export class FarmState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type({ map: Plot }) plots = new MapSchema<Plot>();
   @type({ map: Animal }) animals = new MapSchema<Animal>();
+  /** tas bersama: itemId -> jumlah (tiap jenis = 1 slot) */
+  @type({ map: InventoryItem }) inventory = new MapSchema<InventoryItem>();
+  @type("number") maxSlots: number = BAG_SLOTS_1;
 }

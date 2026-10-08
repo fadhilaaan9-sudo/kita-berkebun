@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import type { Animal, AnimalKind, CropKind, Plot } from "@kebun-kita/shared";
+import { FEEDS_NEEDED } from "@kebun-kita/shared";
 
 const M = "/models";
 const DIRT = `${M}/crops_dirtSingle.glb`;
@@ -92,38 +93,84 @@ function ReadyBadge({ y }: { y: number }) {
   );
 }
 
-/** Hewan: model Kenney Cube Pets + animasi (idle, makan saat hasil siap). */
+/** Badge melayang: penanda hewan butuh pakan (ikon kebutuhan — GDD). */
+function NeedBadge({ y }: { y: number }) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.position.y = y + Math.sin(clock.elapsedTime * 4) * 0.1;
+      const s = 1 + Math.sin(clock.elapsedTime * 4) * 0.12;
+      ref.current.scale.setScalar(s);
+    }
+  });
+  return (
+    <mesh ref={ref} position={[0, y, 0]}>
+      <octahedronGeometry args={[0.16]} />
+      <meshStandardMaterial color="#ff6b4a" emissive="#c22e12" emissiveIntensity={0.5} />
+    </mesh>
+  );
+}
+
+/** Hewan: model Kenney Cube Pets + animasi + jalan acak di kandang (interpolasi halus). */
 export function AnimalModel({ animal, onClick }: { animal: Animal; onClick: () => void }) {
   const { scene, animations } = useGLTF(ANIMAL_MODEL[animal.kind]);
   // clone per instance: tiap hewan punya mixer animasinya sendiri
   const clone = useMemo(() => scene.clone(), [scene]);
-  const group = useRef<THREE.Group>(null);
-  const { actions } = useAnimations(animations, group);
+  const outer = useRef<THREE.Group>(null);
+  const inner = useRef<THREE.Group>(null);
+  const { actions } = useAnimations(animations, inner);
+  const smooth = useRef({ x: animal.x, z: animal.z });
+  const mode = useRef<"idle" | "walk" | "eat">("idle");
+
+  const needsFeed = animal.feedsGiven < FEEDS_NEEDED[animal.kind] && !animal.produceReady;
+
+  const setMode = (m: "idle" | "walk" | "eat") => {
+    if (mode.current === m) return;
+    mode.current = m;
+    actions[m]?.reset().fadeIn(0.25).play();
+  };
 
   useEffect(() => {
-    const clip = animal.produceReady ? "eat" : "idle";
-    const action = actions[clip];
-    action?.reset().fadeIn(0.3).play();
-    return () => {
-      action?.fadeOut(0.3);
-    };
-  }, [actions, animal.produceReady]);
+    smooth.current = { x: animal.x, z: animal.z };
+    actions["idle"]?.play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFrame((_, dt) => {
+    const s = smooth.current;
+    const dx = animal.x - s.x;
+    const dz = animal.z - s.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.05) {
+      const step = Math.min(d, dt * 3);
+      s.x += (dx / d) * step;
+      s.z += (dz / d) * step;
+      if (inner.current) inner.current.rotation.y = Math.atan2(dx, dz);
+      setMode("walk");
+    } else {
+      setMode(animal.produceReady ? "eat" : "idle");
+    }
+    outer.current?.position.set(s.x, 0, s.z);
+  });
 
   const scale = animal.kind === "cow" ? 1.1 : 0.9;
+  const badgeY = animal.kind === "cow" ? 1.9 : 1.2;
   return (
     <group
+      ref={outer}
       position={[animal.x, 0, animal.z]}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
     >
-      <group ref={group} scale={scale}>
+      <group ref={inner} scale={scale}>
         <primitive object={clone} />
       </group>
-      {animal.produceReady && <ReadyBadge y={animal.kind === "cow" ? 1.9 : 1.2} />}
+      {animal.produceReady && <ReadyBadge y={badgeY} />}
+      {needsFeed && <NeedBadge y={badgeY} />}
       <mesh position={[0, 0.6, 0]}>
-        <boxGeometry args={[1.4, 1.4, 1.4]} />
+        <boxGeometry args={[1.6, 1.6, 1.6]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>
@@ -147,6 +194,36 @@ export function FenceBorder() {
     }
     return list;
   }, [scene]);
+  return (
+    <>
+      {fences.map((f, idx) => (
+        <primitive key={idx} object={f.obj} position={f.pos} rotation={[0, f.rot, 0]} />
+      ))}
+    </>
+  );
+}
+
+/** Kandang hewan: persegi pagar dari model fence Kenney. */
+export function AnimalPen({ cx, cz, hw, hd }: { cx: number; cz: number; hw: number; hd: number }) {
+  const { scene } = useGLTF(`${M}/fence_simple.glb`);
+  const fences = useMemo(() => {
+    const list: { pos: [number, number, number]; rot: number; obj: THREE.Object3D }[] = [];
+    const add = (x: number, z: number, rot: number) =>
+      list.push({ pos: [x, 0, z], rot, obj: scene.clone() });
+    const nx = Math.round(hw * 2);
+    for (let i = 0; i <= nx; i++) {
+      const x = cx - hw + i;
+      add(x, cz - hd, 0);
+      add(x, cz + hd, 0);
+    }
+    const nz = Math.round(hd * 2);
+    for (let i = 1; i < nz; i++) {
+      const z = cz - hd + i;
+      add(cx - hw, z, Math.PI / 2);
+      add(cx + hw, z, Math.PI / 2);
+    }
+    return list;
+  }, [scene, cx, cz, hw, hd]);
   return (
     <>
       {fences.map((f, idx) => (
