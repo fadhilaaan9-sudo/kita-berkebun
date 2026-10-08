@@ -7,7 +7,11 @@ bebas dipakai untuk proyek pribadi maupun komersial, tanpa atribusi wajib.
 > atau `git pull`, jalankan sekali dari root repo:
 >
 > ```bash
-> ./scripts/fetch-models.sh
+> ./scripts/fetch-models.sh            # Linux / macOS / Git Bash / WSL
+> ```
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1   # Windows
 > ```
 >
 > Script mengunduh ulang file-file di bawah ini dari kenney.nl.
