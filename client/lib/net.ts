@@ -3,8 +3,25 @@ import { generateJoinCode, type FarmState } from "@kebun-kita/shared";
 
 let client: Client | null = null;
 
+/**
+ * Alamat server game.
+ *
+ * PENTING untuk main bareng via LAN: jangan hardcode "localhost", karena
+ * JavaScript jalan di browser TAMU — "localhost" di sana artinya laptop
+ * si tamu sendiri, bukan laptop host. Jadi hostname diambil dari alamat
+ * yang dipakai membuka halaman web ini:
+ *  - buka http://localhost:3000      -> server ws://localhost:2567
+ *  - buka http://192.168.1.5:3000    -> server ws://192.168.1.5:2567
+ *
+ * Kalau nanti di-deploy (bukan LAN), set NEXT_PUBLIC_COLYSEUS_URL
+ * ke alamat server aslinya.
+ */
 function wsUrl(): string {
-  return process.env.NEXT_PUBLIC_COLYSEUS_URL || "ws://localhost:2567";
+  if (process.env.NEXT_PUBLIC_COLYSEUS_URL) return process.env.NEXT_PUBLIC_COLYSEUS_URL;
+  if (typeof window !== "undefined" && window.location?.hostname) {
+    return `ws://${window.location.hostname}:2567`;
+  }
+  return "ws://localhost:2567";
 }
 
 function httpUrl(): string {
