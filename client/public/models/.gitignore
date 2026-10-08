@@ -1,0 +1,4 @@
+# File .glb dan tekstur tidak di-commit (binary).
+# Jalankan ./scripts/fetch-models.sh untuk mengunduhnya (CC0, Kenney).
+*.glb
+Textures/

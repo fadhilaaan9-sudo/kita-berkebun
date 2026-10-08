@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Room } from "colyseus.js";
 import { FarmState, MSG, type CropKind, type Plot } from "@kebun-kita/shared";
-
-const PLOT_COLORS: Record<string, string> = {
-  wild: "#5da75d", // rumput liar
-  tilled: "#7a5230", // tanah dicangkul
-  planted: "#8fd18f", // tumbuh (disiram)
-  ready: "#f2c14e", // siap panen
-};
-const PLOT_DRY = "#a98a5f"; // ditanam tapi belum disiram
+import { AnimalModel, FenceBorder, PlotModel } from "./FarmModels";
 
 function useKeys() {
   const keys = useRef<Record<string, boolean>>({});
@@ -105,23 +98,9 @@ function Plots({ room, crop }: { room: Room<FarmState>; crop: CropKind }) {
 
   return (
     <>
-      {plots.map((plot) => {
-        const color =
-          plot.state === "planted" && !plot.watered ? PLOT_DRY : (PLOT_COLORS[plot.state] ?? PLOT_COLORS.wild);
-        return (
-          <mesh
-            key={plot.id}
-            position={[plot.gx - 3.5, 0.1, plot.gz - 3.5]}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick(plot);
-            }}
-          >
-            <boxGeometry args={[0.95, 0.2, 0.95]} />
-            <meshStandardMaterial color={color} />
-          </mesh>
-        );
-      })}
+      {plots.map((plot) => (
+        <PlotModel key={plot.id} plot={plot} onClick={() => handleClick(plot)} />
+      ))}
     </>
   );
 }
@@ -130,24 +109,16 @@ function Animals({ room }: { room: Room<FarmState> }) {
   const animals = Array.from(room.state.animals.values());
   return (
     <>
-      {animals.map((a) => {
-        const isCow = a.kind === "cow";
-        const color = a.produceReady ? "#ffd23f" : isCow ? "#8a5a3b" : "#f5f5f5";
-        return (
-          <mesh
-            key={a.id}
-            position={[a.x, isCow ? 0.7 : 0.3, a.z]}
-            onClick={(e) => {
-              e.stopPropagation();
-              // kuning (siap) → ambil hasil, kalau tidak → kasih makan
-              room.send(a.produceReady ? MSG.COLLECT : MSG.FEED, { animalId: a.id });
-            }}
-          >
-            <boxGeometry args={isCow ? [1.2, 1.1, 1.8] : [0.5, 0.5, 0.6]} />
-            <meshStandardMaterial color={color} />
-          </mesh>
-        );
-      })}
+      {animals.map((a) => (
+        <AnimalModel
+          key={a.id}
+          animal={a}
+          onClick={() => {
+            // siap panen → ambil hasil, kalau tidak → kasih makan
+            room.send(a.produceReady ? MSG.COLLECT : MSG.FEED, { animalId: a.id });
+          }}
+        />
+      ))}
     </>
   );
 }
@@ -188,8 +159,11 @@ export default function FarmScene({ room, crop }: { room: Room<FarmState>; crop:
         <planeGeometry args={[60, 60]} />
         <meshStandardMaterial color="#79c25f" />
       </mesh>
-      <Plots room={room} crop={crop} />
-      <Animals room={room} />
+      <Suspense fallback={null}>
+        <Plots room={room} crop={crop} />
+        <Animals room={room} />
+        <FenceBorder />
+      </Suspense>
       <House />
       <MyAvatar room={room} keys={keys} />
       <OtherAvatars room={room} />
