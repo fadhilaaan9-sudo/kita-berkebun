@@ -74,7 +74,9 @@ const AREAS: Array<[number, number, number, number]> = [
   [-7.5, 7.5, -4.5, -3.5], // jalan lurus atas (ada jembatan)
   [-7.5, -1.5, 3.5, 4.5], // jalan lurus bawah, barat chicane
   [-0.5, 7.5, 3.5, 4.5], // jalan lurus bawah, timur chicane
-  [-2.5, 0.5, 3.5, 5.5], // chicane (jog ke selatan)
+  [-2.5, -1.5, 3.5, 5.5], // chicane: kaki barat (vertikal)
+  [-2.5, 0.5, 4.5, 5.5], // chicane: tengah (horizontal)
+  [-0.5, 0.5, 3.5, 5.5], // chicane: kaki timur (vertikal)
   [-7.5, -6.5, -4.5, 4.5], // sisi kiri
   [6.5, 7.5, -4.5, 4.5], // sisi kanan
 ];
