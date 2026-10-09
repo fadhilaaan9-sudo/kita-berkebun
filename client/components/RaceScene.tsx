@@ -84,6 +84,7 @@ function Cars({
   const others = cars.filter((c) => c.id !== room.sessionId);
   // posisi halus mobil lain (diisi OtherCar tiap frame, dibaca MyCar untuk tabrakan)
   const othersPos = useRef(new Map<string, { x: number; z: number }>());
+  const phase = room.state.phase;
   return (
     <>
       {me && (
@@ -92,6 +93,7 @@ function Cars({
           input={input}
           poseRef={poseRef}
           othersPos={othersPos}
+          phase={phase}
           onState={(x, z, angle, speed) => room.send(RACE_MSG.CAR_STATE, { x, z, angle, speed })}
         />
       )}

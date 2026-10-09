@@ -173,6 +173,9 @@ const BRAKE = 14;
 const FRICTION = 1.6;
 const STEER_MAX = 0.55;
 
+/** Input kosong (untuk fase non-racing). */
+const EMPTY_INPUT: CarInput = { fwd: false, back: false, left: false, right: false };
+
 export interface CarInput {
   fwd: boolean;
   back: boolean;
@@ -199,12 +202,14 @@ export function MyCar({
   input,
   poseRef,
   othersPos,
+  phase,
   onState,
 }: {
   car: RaceCar;
   input: React.MutableRefObject<CarInput>;
   poseRef: React.MutableRefObject<CarPose>;
   othersPos: React.MutableRefObject<Map<string, { x: number; z: number }>>;
+  phase: string;
   onState: (x: number, z: number, angle: number, speed: number) => void;
 }) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
@@ -217,7 +222,8 @@ export function MyCar({
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     const p = phys.current;
-    const inp = input.current;
+    // selama countdown/finished: abaikan input (fisika tabrakan & dinding tetap jalan)
+    const inp = phase === "racing" ? input.current : EMPTY_INPUT;
 
     // akselerasi / rem / mundur
     if (inp.fwd) p.speed += ACCEL * dt;

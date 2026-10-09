@@ -70,9 +70,21 @@ export class RaceCar extends Schema {
   @type("number") speed: number = 0;
   /** nama file model, mis. "vehicle-racer" */
   @type("string") vehicle: string = "vehicle-racer";
+  /** lap yang sudah diselesaikan */
+  @type("number") lap: number = 0;
+  /** indeks checkpoint BERIKUTNYA yang harus dilewati */
+  @type("number") checkpoint: number = 1;
 }
 
 export class RaceState extends Schema {
   @type("string") roomCode: string = "";
   @type({ map: RaceCar }) cars = new MapSchema<RaceCar>();
+  /** fase balapan: countdown | racing | finished */
+  @type("string") phase: string = "countdown";
+  /** hitungan mundur detik (saat countdown) */
+  @type("number") countdown: number = 3;
+  /** sessionId pemenang (saat finished) */
+  @type("string") winnerId: string = "";
+  /** nama pemenang */
+  @type("string") winnerName: string = "";
 }

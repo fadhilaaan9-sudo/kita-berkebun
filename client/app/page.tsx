@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Room } from "colyseus.js";
-import { RaceState } from "@kebun-kita/shared";
+import { RaceState, TOTAL_LAPS } from "@kebun-kita/shared";
 import { VEHICLES, createRace, joinRace, waitForInitialState } from "@/lib/net";
 import RaceScene, { useMySpeed } from "@/components/RaceScene";
 import type { CarPose } from "@/components/RaceModels";
@@ -31,18 +31,31 @@ function GameHud({
 }) {
   const speed = useMySpeed(poseRef);
   const [roomCode, setRoomCode] = useState("");
-  const [cars, setCars] = useState<{ id: string; name: string }[]>([]);
+  const [cars, setCars] = useState<{ id: string; name: string; lap: number }[]>([]);
+  const [phase, setPhase] = useState("countdown");
+  const [countdown, setCountdown] = useState(3);
+  const [winnerName, setWinnerName] = useState("");
+  const [myId, setMyId] = useState("");
 
   // sinkron ringan untuk HUD
   useEffect(() => {
     const sync = () => {
       if (!room.state || room.state.cars === undefined) return;
       setRoomCode(room.state.roomCode);
-      setCars(Array.from(room.state.cars.values()).map((c) => ({ id: c.id, name: c.name })));
+      setCars(
+        Array.from(room.state.cars.values()).map((c) => ({ id: c.id, name: c.name, lap: c.lap }))
+      );
+      setPhase(room.state.phase);
+      setCountdown(room.state.countdown);
+      setWinnerName(room.state.winnerName);
+      setMyId(room.sessionId);
     };
     sync();
     room.onStateChange(() => sync());
   }, [room]);
+
+  const myCar = cars.find((c) => c.id === myId);
+  const myLap = myCar ? Math.min(myCar.lap + 1, TOTAL_LAPS) : 1;
 
   return (
     <>
@@ -57,17 +70,46 @@ function GameHud({
         <div className="bg-black/60 text-white rounded-lg px-3 py-1.5 text-sm font-semibold">
           🏎️ {Math.round(speed * 9)} km/h
         </div>
+        <div className="bg-black/60 text-white rounded-lg px-3 py-1.5 text-sm font-semibold">
+          🏁 Lap {myLap}/{TOTAL_LAPS}
+        </div>
       </div>
 
       <div className="absolute top-3 right-3 bg-black/60 text-white rounded-lg px-3 py-2 text-sm">
         <p className="font-semibold mb-1">👥 Pembalap ({cars.length}/8)</p>
         {cars.map((c) => (
-          <p key={c.id}>{c.name}</p>
+          <p key={c.id}>
+            {c.name} · Lap {Math.min(c.lap + 1, TOTAL_LAPS)}
+          </p>
         ))}
         <button onClick={onLeave} className="mt-2 text-xs underline text-gray-300 hover:text-white">
           Keluar balapan
         </button>
       </div>
+
+      {/* hitungan mundur */}
+      {phase === "countdown" && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-8xl font-black text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
+            {countdown > 0 ? countdown : "GO!"}
+          </div>
+        </div>
+      )}
+
+      {/* pemenang */}
+      {phase === "finished" && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/70 text-white rounded-2xl px-8 py-6 text-center">
+            <div className="text-5xl mb-2">🏆</div>
+            <div className="text-2xl font-bold">{winnerName} menang!</div>
+            <div className="text-sm text-gray-300 mt-1">
+              {myId && cars.find((c) => c.id === myId)?.name === winnerName
+                ? "Kamu juaranya!"
+                : "Coba lagi di balapan berikutnya."}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="absolute bottom-3 right-3 bg-black/60 text-white rounded-lg px-3 py-2 text-xs max-w-[230px]">
         <p>

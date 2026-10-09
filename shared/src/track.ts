@@ -28,6 +28,22 @@ export const HILLS = {
   height: 0.27 * S, // tinggi puncak bukit
 };
 
+/** Jumlah lap untuk menang. */
+export const TOTAL_LAPS = 3;
+
+/**
+ * Checkpoint berurutan (satuan world): [x, z, radius].
+ * 0 = garis finis/start, sisanya mengikuti arah balapan.
+ * Mobil harus melewati semuanya berurutan sebelum finis dihitung.
+ */
+export const CHECKPOINTS: Array<[number, number, number]> = [
+  [8, 8, 2.5], // 0: garis finis (spawn)
+  [14, 0, 2.5], // 1: sisi kanan (setelah tikungan kanan-bawah)
+  [0, -8, 2.5], // 2: atas jembatan layang
+  [-14, 0, 2.5], // 3: sisi kiri (setelah tikungan kiri-atas)
+  [-9, 8, 2.5], // 4: bukit (jalan bawah barat)
+];
+
 /** Titik spawn: jalan lurus bawah, timur chicane, menghadap +x. */
 export const SPAWN = { x: 4 * S, z: GRID.z * S, angle: Math.PI / 2 };
 

@@ -4,6 +4,8 @@ import {
   RaceCar,
   RaceState,
   SPAWN,
+  CHECKPOINTS,
+  TOTAL_LAPS,
   clampToTrack,
   generateJoinCode,
   sanitizeJoinCode,
@@ -36,12 +38,13 @@ const START_Z = SPAWN.z;
 const START_ANGLE = SPAWN.angle; // hadap +x (forward = (sin, cos))
 
 /**
- * Room balapan MVP: fisika arcade jalan di client (responsif),
- * server menerima state mobil, validasi ringan, lalu broadcast
- * ke semua pemain. Lap/checkpoint menyusul di iterasi berikutnya.
+ * Room balapan: fisika arcade jalan di client (responsif),
+ * server menerima state mobil, validasi ringan, checkpoint/lap,
+ * lalu broadcast ke semua pemain.
  */
 export class RaceRoom extends Room<RaceState> {
   maxClients = MAX_CLIENTS;
+  private countdownTimer?: NodeJS.Timeout;
 
   onCreate(options: RaceJoinOptions) {
     let roomCode = sanitizeJoinCode(options.roomCode);
@@ -49,6 +52,22 @@ export class RaceRoom extends Room<RaceState> {
     this.setMetadata({ roomCode });
     this.setState(new RaceState());
     this.state.roomCode = roomCode;
+    this.state.phase = "countdown";
+    this.state.countdown = 3;
+
+    // hitungan mundur 3-2-1, lalu balapan dimulai
+    this.countdownTimer = setInterval(() => {
+      if (this.state.phase !== "countdown") {
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        return;
+      }
+      this.state.countdown--;
+      if (this.state.countdown <= 0) {
+        this.state.phase = "racing";
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        console.log(`[kita-balapan:${roomCode}] GO!`);
+      }
+    }, 1000);
 
     this.onMessage(RACE_MSG.CAR_STATE, (client, data: CarStatePayload) => {
       const car = this.state.cars.get(client.sessionId);
@@ -65,9 +84,40 @@ export class RaceRoom extends Room<RaceState> {
       if (typeof data.speed === "number") {
         car.speed = Math.max(-8, Math.min(14, data.speed));
       }
+      // checkpoint & lap (hanya saat racing)
+      if (this.state.phase === "racing") {
+        this.checkCheckpoint(car);
+      }
     });
 
     console.log(`[kita-balapan] race room created — code: ${roomCode}`);
+  }
+
+  /** Cek apakah mobil melewati checkpoint berikutnya (berurutan). */
+  private checkCheckpoint(car: RaceCar) {
+    const idx = car.checkpoint; // 0 = finis, 1..4 = checkpoint
+    const [cx, cz, r] = CHECKPOINTS[idx];
+    const dx = car.x - cx;
+    const dz = car.z - cz;
+    if (dx * dx + dz * dz > r * r) return; // belum sampai
+
+    if (idx === 0) {
+      // melewati garis finis setelah putaran penuh → lap + 1
+      car.lap++;
+      car.checkpoint = 1;
+      console.log(`[kita-balapan:${this.state.roomCode}] ${car.name} lap ${car.lap}/${TOTAL_LAPS}`);
+      if (car.lap >= TOTAL_LAPS && this.state.phase === "racing") {
+        this.state.phase = "finished";
+        this.state.winnerId = car.id;
+        this.state.winnerName = car.name;
+        console.log(`[kita-balapan:${this.state.roomCode}] PEMENANG: ${car.name}!`);
+      }
+    } else {
+      car.checkpoint++;
+      if (car.checkpoint >= CHECKPOINTS.length) {
+        car.checkpoint = 0; // selanjutnya: garis finis
+      }
+    }
   }
 
   onJoin(client: Client, options: RaceJoinOptions) {
@@ -78,6 +128,8 @@ export class RaceRoom extends Room<RaceState> {
     car.z = START_Z;
     car.angle = START_ANGLE;
     car.speed = 0;
+    car.lap = 0;
+    car.checkpoint = 1; // mulai dari checkpoint 1 (0 = finis di spawn)
     car.vehicle =
       typeof options.vehicle === "string" && VALID_VEHICLES.has(options.vehicle)
         ? options.vehicle
@@ -89,5 +141,9 @@ export class RaceRoom extends Room<RaceState> {
   onLeave(client: Client) {
     this.state.cars.delete(client.sessionId);
     console.log(`[kita-balapan:${this.state.roomCode}] a racer left`);
+  }
+
+  onDispose() {
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
   }
 }
