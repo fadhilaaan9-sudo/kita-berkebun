@@ -3,6 +3,7 @@ import {
   RACE_MSG,
   RaceCar,
   RaceState,
+  clampToTrack,
   generateJoinCode,
   sanitizeJoinCode,
   type CarStatePayload,
@@ -51,9 +52,14 @@ export class RaceRoom extends Room<RaceState> {
     this.onMessage(RACE_MSG.CAR_STATE, (client, data: CarStatePayload) => {
       const car = this.state.cars.get(client.sessionId);
       if (!car || typeof data?.x !== "number" || typeof data?.z !== "number") return;
-      // Validasi ringan: clamp ke dunia + batasi kecepatan (anti-teleport kasar)
-      car.x = Math.max(-WORLD_BOUND, Math.min(WORLD_BOUND, data.x));
-      car.z = Math.max(-WORLD_BOUND, Math.min(WORLD_BOUND, data.z));
+      // Validasi: clamp ke dunia + jepit ke lintasan (dinding tak terlihat)
+      const p = {
+        x: Math.max(-WORLD_BOUND, Math.min(WORLD_BOUND, data.x)),
+        z: Math.max(-WORLD_BOUND, Math.min(WORLD_BOUND, data.z)),
+      };
+      clampToTrack(p);
+      car.x = p.x;
+      car.z = p.z;
       if (typeof data.angle === "number") car.angle = data.angle;
       if (typeof data.speed === "number") {
         car.speed = Math.max(-8, Math.min(14, data.speed));

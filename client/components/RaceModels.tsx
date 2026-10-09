@@ -5,6 +5,7 @@ import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { RaceCar } from "@kebun-kita/shared";
+import { CAR_SCALE, clampToTrack } from "@kebun-kita/shared";
 
 const TOY = "/models/kenney_toy-car-kit";
 const CITY = "/models/kenney_city-kit-roads";
@@ -165,6 +166,8 @@ export function MyCar({
     // gerak
     p.x += Math.sin(p.angle) * p.speed * dt;
     p.z += Math.cos(p.angle) * p.speed * dt;
+    // dinding tak terlihat: mobil tidak bisa keluar lintasan
+    clampToTrack(p);
 
     if (group.current) {
       group.current.position.set(p.x, 0, p.z);
@@ -189,7 +192,9 @@ export function MyCar({
 
   return (
     <group ref={group} position={[car.x, 0, car.z]}>
-      <primitive object={model} />
+      <group scale={CAR_SCALE}>
+        <primitive object={model} />
+      </group>
     </group>
   );
 }
@@ -222,7 +227,9 @@ export function OtherCar({ car }: { car: RaceCar }) {
 
   return (
     <group ref={group} position={[car.x, 0, car.z]}>
-      <primitive object={model} />
+      <group scale={CAR_SCALE}>
+        <primitive object={model} />
+      </group>
     </group>
   );
 }
