@@ -52,22 +52,17 @@ export class RaceRoom extends Room<RaceState> {
     this.setMetadata({ roomCode });
     this.setState(new RaceState());
     this.state.roomCode = roomCode;
-    this.state.phase = "countdown";
+    this.state.phase = "waiting"; // tunggu host memencet start
     this.state.countdown = 3;
 
-    // hitungan mundur 3-2-1, lalu balapan dimulai
-    this.countdownTimer = setInterval(() => {
-      if (this.state.phase !== "countdown") {
-        if (this.countdownTimer) clearInterval(this.countdownTimer);
-        return;
-      }
-      this.state.countdown--;
-      if (this.state.countdown <= 0) {
-        this.state.phase = "racing";
-        if (this.countdownTimer) clearInterval(this.countdownTimer);
-        console.log(`[kita-balapan:${roomCode}] GO!`);
-      }
-    }, 1000);
+    // host memencet tombol start → mulai hitungan mundur
+    this.onMessage(RACE_MSG.START_RACE, (client) => {
+      if (client.sessionId !== this.state.hostId) return; // hanya host
+      if (this.state.phase !== "waiting") return; // sudah mulai
+      if (this.state.cars.size < 1) return;
+      this.startCountdown();
+      console.log(`[kita-balapan:${roomCode}] host memulai balapan`);
+    });
 
     this.onMessage(RACE_MSG.CAR_STATE, (client, data: CarStatePayload) => {
       const car = this.state.cars.get(client.sessionId);
@@ -91,6 +86,24 @@ export class RaceRoom extends Room<RaceState> {
     });
 
     console.log(`[kita-balapan] race room created — code: ${roomCode}`);
+  }
+
+  /** Mulai hitungan mundur 3-2-1 lalu balapan. */
+  private startCountdown() {
+    this.state.phase = "countdown";
+    this.state.countdown = 3;
+    this.countdownTimer = setInterval(() => {
+      if (this.state.phase !== "countdown") {
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        return;
+      }
+      this.state.countdown--;
+      if (this.state.countdown <= 0) {
+        this.state.phase = "racing";
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        console.log(`[kita-balapan:${this.state.roomCode}] GO!`);
+      }
+    }, 1000);
   }
 
   /** Cek apakah mobil melewati checkpoint berikutnya (berurutan). */
@@ -134,12 +147,25 @@ export class RaceRoom extends Room<RaceState> {
       typeof options.vehicle === "string" && VALID_VEHICLES.has(options.vehicle)
         ? options.vehicle
         : "vehicle-racer";
+    const isFirst = this.state.cars.size === 0;
     this.state.cars.set(client.sessionId, car);
-    console.log(`[kita-balapan:${this.state.roomCode}] ${car.name} joined`);
+    if (isFirst) {
+      this.state.hostId = client.sessionId; // pemain pertama = host
+    }
+    console.log(`[kita-balapan:${this.state.roomCode}] ${car.name} joined${isFirst ? " (host)" : ""}`);
   }
 
   onLeave(client: Client) {
+    const wasHost = client.sessionId === this.state.hostId;
     this.state.cars.delete(client.sessionId);
+    // host keluar → oper ke pemain pertama yang tersisa
+    if (wasHost) {
+      const next = this.state.cars.keys().next();
+      this.state.hostId = next.done ? "" : next.value;
+      if (this.state.hostId) {
+        console.log(`[kita-balapan:${this.state.roomCode}] host pindah`);
+      }
+    }
     console.log(`[kita-balapan:${this.state.roomCode}] a racer left`);
   }
 

@@ -33,6 +33,8 @@ export interface AnimalPayload {
 export const RACE_MSG = {
   /** client -> server: posisi mobil (dikirim rutin saat menyetir) */
   CAR_STATE: "car_state",
+  /** client(host) -> server: mulai hitungan mundur */
+  START_RACE: "start_race",
 } as const;
 
 export interface CarStatePayload {

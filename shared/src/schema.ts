@@ -79,12 +79,14 @@ export class RaceCar extends Schema {
 export class RaceState extends Schema {
   @type("string") roomCode: string = "";
   @type({ map: RaceCar }) cars = new MapSchema<RaceCar>();
-  /** fase balapan: countdown | racing | finished */
-  @type("string") phase: string = "countdown";
+  /** fase balapan: waiting | countdown | racing | finished */
+  @type("string") phase: string = "waiting";
   /** hitungan mundur detik (saat countdown) */
   @type("number") countdown: number = 3;
   /** sessionId pemenang (saat finished) */
   @type("string") winnerId: string = "";
   /** nama pemenang */
   @type("string") winnerName: string = "";
+  /** sessionId host (yang bisa memencet start) */
+  @type("string") hostId: string = "";
 }

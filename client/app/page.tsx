@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Room } from "colyseus.js";
-import { RaceState, TOTAL_LAPS } from "@kebun-kita/shared";
+import { RaceState, TOTAL_LAPS, RACE_MSG } from "@kebun-kita/shared";
 import { VEHICLES, createRace, joinRace, waitForInitialState } from "@/lib/net";
 import RaceScene, { useMySpeed } from "@/components/RaceScene";
 import type { CarPose } from "@/components/RaceModels";
@@ -32,10 +32,11 @@ function GameHud({
   const speed = useMySpeed(poseRef);
   const [roomCode, setRoomCode] = useState("");
   const [cars, setCars] = useState<{ id: string; name: string; lap: number }[]>([]);
-  const [phase, setPhase] = useState("countdown");
+  const [phase, setPhase] = useState("waiting");
   const [countdown, setCountdown] = useState(3);
   const [winnerName, setWinnerName] = useState("");
   const [myId, setMyId] = useState("");
+  const [hostId, setHostId] = useState("");
 
   // sinkron ringan untuk HUD
   useEffect(() => {
@@ -49,6 +50,7 @@ function GameHud({
       setCountdown(room.state.countdown);
       setWinnerName(room.state.winnerName);
       setMyId(room.sessionId);
+      setHostId(room.state.hostId);
     };
     sync();
     room.onStateChange(() => sync());
@@ -56,6 +58,7 @@ function GameHud({
 
   const myCar = cars.find((c) => c.id === myId);
   const myLap = myCar ? Math.min(myCar.lap + 1, TOTAL_LAPS) : 1;
+  const isHost = myId !== "" && myId === hostId;
 
   return (
     <>
@@ -86,6 +89,28 @@ function GameHud({
           Keluar balapan
         </button>
       </div>
+
+      {/* lobby: tunggu host memencet start */}
+      {phase === "waiting" && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/70 text-white rounded-2xl px-8 py-6 text-center pointer-events-auto">
+            <div className="text-2xl font-bold mb-2">🏁 Siap balapan?</div>
+            <div className="text-sm text-gray-300 mb-4">
+              {cars.length} pembalap sudah gabung. {isHost ? "Kamu host!" : "Tunggu host memulai."}
+            </div>
+            {isHost ? (
+              <button
+                onClick={() => room.send(RACE_MSG.START_RACE)}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl px-8 py-3 text-lg"
+              >
+                ▶ Start Balapan
+              </button>
+            ) : (
+              <div className="text-gray-400 text-sm animate-pulse">Menunggu host…</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* hitungan mundur */}
       {phase === "countdown" && (
