@@ -54,10 +54,10 @@ function buildTrack(): Piece[] {
     city("road-straight.glb", X1, z, Math.PI / 2);
   }
   // 4 tikungan (sudah diverifikasi)
-  city("road-bend.glb", X0, Z0, Math.PI); // kiri-atas: Timur+Selatan
-  city("road-bend.glb", X1, Z0, -Math.PI / 2); // kanan-atas: Barat+Selatan
-  city("road-bend.glb", X1, Z1, 0); // kanan-bawah: Barat+Utara
-  city("road-bend.glb", X0, Z1, Math.PI / 2); // kiri-bawah: Timur+Utara
+  city("road-bend.glb", X0, Z0, Math.PI / 2); // kiri-atas: Timur+Selatan
+  city("road-bend.glb", X1, Z0, -Math.PI / 600); // kanan-atas: Barat+Selatan
+  city("road-bend.glb", X1, Z1, -Math.PI / 2); // kanan-bawah: Barat+Utara
+  city("road-bend.glb", X0, Z1, Math.PI); // kiri-bawah: Timur+Utara
 
   // garis start/finis (kit mainan) di jalan lurus bawah
   pieces.push({ file: "gate-finish.glb", x: 0, z: Z1, rot: 0, kit: "toy" });
