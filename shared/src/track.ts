@@ -20,8 +20,24 @@ export const GRID = { x: 7, z: 4 }; // x: -7..7, z: -4..4
 /** Jarak aman bodi mobil dari tepi (setengah lebar mobil + sedikit). */
 export const WALL_MARGIN = 0.35;
 
+/** Bukit roller-coaster di jalan lurus bawah barat (satuan world). */
+export const HILLS = {
+  z: GRID.z * S, // 8: garis tengah jalan
+  x0: -6.5 * S, // awal zona (tile x=-6)
+  x1: -2.5 * S, // akhir zona (tile x=-3)
+  height: 0.27 * S, // tinggi puncak bukit
+};
+
 /** Titik spawn: jalan lurus bawah, timur chicane, menghadap +x. */
 export const SPAWN = { x: 4 * S, z: GRID.z * S, angle: Math.PI / 2 };
+
+/** Tinggi bukit segitiga (naik-turun tiap 2 tile), x dalam world. */
+function hillHeight(x: number): number {
+  const local = (x - HILLS.x0) / S; // 0..4 (satuan build)
+  const phase = ((local % 2) + 2) % 2; // 0..2
+  const h = phase < 1 ? phase : 2 - phase; // 0→1→0
+  return h * HILLS.height;
+}
 
 /**
  * Jembatan layang di jalan lurus atas: jalan menanjak, melewati
@@ -40,12 +56,17 @@ export const BRIDGE = {
  * tanjakan & dek jembatan. Kontinu (tidak ada lompatan).
  */
 export function trackHeight(x: number, z: number): number {
+  // jembatan layang (jalan atas)
   if (Math.abs(z - BRIDGE.z) < 0.6 * S) {
     const ax = Math.abs(x);
     if (ax <= BRIDGE.halfDeck) return BRIDGE.height;
     if (ax <= BRIDGE.rampEnd) {
       return (BRIDGE.height * (BRIDGE.rampEnd - ax)) / (BRIDGE.rampEnd - BRIDGE.halfDeck);
     }
+  }
+  // bukit roller-coaster (jalan bawah barat)
+  if (Math.abs(z - HILLS.z) < 0.6 * S && x >= HILLS.x0 && x <= HILLS.x1) {
+    return hillHeight(x);
   }
   return 0;
 }

@@ -51,10 +51,15 @@ function buildTrack(): Piece[] {
   const toy = (file: string, x: number, z: number, rot = 0, y = 0) =>
     pieces.push({ file, x, z, rot, kit: "toy", y });
 
-  // jalan lurus bawah (arah x) — terpotong chicane di x -2..0
+  // jalan lurus bawah (arah x) — bukit di x -6..-3, chicane di x -2..0
   for (let x = X0 + 1; x < X1; x++) {
-    if (x <= -3 || x >= 1) city("road-straight.glb", x, Z1);
+    if (x >= 1) city("road-straight.glb", x, Z1);
   }
+  // BUKIT ROLLER-COASTER: naik-turun di jalan bawah barat
+  city("road-slant.glb", -6, Z1, 0); // naik ke +x
+  city("road-slant.glb", -5, Z1, Math.PI); // turun ke +x
+  city("road-slant.glb", -4, Z1, 0); // naik ke +x
+  city("road-slant.glb", -3, Z1, Math.PI); // turun ke +x
   // CHICANE (tikungan S): jog ke selatan di jalan lurus bawah
   // A: masuk dari barat, belok selatan | B: dari utara, belok timur
   // C: lurus | D: dari barat, belok utara | E: dari selatan, belok timur
@@ -96,9 +101,13 @@ function buildTrack(): Piece[] {
   toy("item-cone.glb", X1 + 1.2, Z0 - 1.2);
   toy("item-cone.glb", X1 + 1.2, Z1 + 1.2);
   toy("item-cone.glb", X0 - 1.2, Z1 + 1.2);
-  // koin di jalan lurus bawah (dekorasi) — lewati area chicane
-  for (let x = -6; x <= 6; x++) {
-    if (x <= -3 || x >= 1) toy("item-coin-gold.glb", x, Z1, 0);
+  // koin di jalan lurus bawah (dekorasi) — lewati area chicane & bukit datar
+  for (let x = 1; x <= 6; x++) {
+    toy("item-coin-gold.glb", x, Z1, 0);
+  }
+  // koin melayang di atas bukit (hadiah!)
+  for (const x of [-6, -5, -4, -3]) {
+    toy("item-coin-gold.glb", x, Z1, 0, 0.45);
   }
   // barrier kota di beberapa titik
   pieces.push({ file: "construction-barrier.glb", x: X0 - 1.5, z: 0, rot: Math.PI / 2, kit: "city" });
