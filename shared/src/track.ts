@@ -17,18 +17,11 @@ const S = TRACK_SCALE;
 /** Ukuran grid lintasan (satuan build, sebelum skala). */
 export const GRID = { x: 7, z: 4 }; // x: -7..7, z: -4..4
 
-/**
- * Batas lintasan: sirkuit berbentuk cincin persegi panjang.
- * - Kotak luar: tepi tile terluar
- * - Lubang dalam: rumput tengah yang tidak boleh dimasuki
- */
-export const TRACK_OUT = { x: (GRID.x + 0.5) * S, z: (GRID.z + 0.5) * S };
-export const TRACK_IN = { x: (GRID.x - 0.5) * S, z: (GRID.z - 0.5) * S };
 /** Jarak aman bodi mobil dari tepi (setengah lebar mobil + sedikit). */
 export const WALL_MARGIN = 0.35;
 
-/** Titik spawn: tengah jalan lurus bawah, menghadap +x. */
-export const SPAWN = { x: 0, z: GRID.z * S, angle: Math.PI / 2 };
+/** Titik spawn: jalan lurus bawah, timur chicane, menghadap +x. */
+export const SPAWN = { x: 4 * S, z: GRID.z * S, angle: Math.PI / 2 };
 
 /**
  * Jembatan layang di jalan lurus atas: jalan menanjak, melewati
@@ -70,23 +63,43 @@ export function trackPitch(x: number, z: number, angle: number): number {
 }
 
 /**
- * Dinding tak terlihat (invisible guard rail): jepit posisi ke cincin lintasan.
- * Dipakai client tiap frame (fisika lokal) dan server saat terima CAR_STATE
- * (otoritatif, anti-cheat kasar). Mobil yang menabrak dinding akan meluncur
- * mengikutinya.
+ * Dinding tak terlihat (invisible guard rail): jepit posisi ke area lintasan.
+ *
+ * Lintasan didefinisikan sebagai daftar persegi (whitelist, satuan build):
+ * [xMin, xMax, zMin, zMax]. Mobil valid jika di dalam salah satunya
+ * (dengan margin); jika di luar semua, ditarik ke titik terdekat.
+ * Dipakai client tiap frame dan server saat terima CAR_STATE (otoritatif).
  */
+const AREAS: Array<[number, number, number, number]> = [
+  [-7.5, 7.5, -4.5, -3.5], // jalan lurus atas (ada jembatan)
+  [-7.5, -1.5, 3.5, 4.5], // jalan lurus bawah, barat chicane
+  [-0.5, 7.5, 3.5, 4.5], // jalan lurus bawah, timur chicane
+  [-2.5, 0.5, 3.5, 5.5], // chicane (jog ke selatan)
+  [-7.5, -6.5, -4.5, 4.5], // sisi kiri
+  [6.5, 7.5, -4.5, 4.5], // sisi kanan
+];
+
 export function clampToTrack(p: { x: number; z: number }): void {
-  const ox = TRACK_OUT.x - WALL_MARGIN;
-  const oz = TRACK_OUT.z - WALL_MARGIN;
-  p.x = Math.max(-ox, Math.min(ox, p.x));
-  p.z = Math.max(-oz, Math.min(oz, p.z));
-  // jangan masuk lubang rumput tengah (diperlebar margin dari sisi dalam)
-  const ix = TRACK_IN.x + WALL_MARGIN;
-  const iz = TRACK_IN.z + WALL_MARGIN;
-  if (Math.abs(p.x) < ix && Math.abs(p.z) < iz) {
-    const dx = ix - Math.abs(p.x);
-    const dz = iz - Math.abs(p.z);
-    if (dx < dz) p.x = (p.x >= 0 ? 1 : -1) * ix;
-    else p.z = (p.z >= 0 ? 1 : -1) * iz;
+  const M = WALL_MARGIN;
+  for (const [x0, x1, z0, z1] of AREAS) {
+    if (p.x >= x0 * S + M && p.x <= x1 * S - M && p.z >= z0 * S + M && p.z <= z1 * S - M) {
+      return; // di jalan, aman
+    }
   }
+  // di luar semua area: tarik ke titik terdekat
+  let bx = p.x;
+  let bz = p.z;
+  let bd = Infinity;
+  for (const [x0, x1, z0, z1] of AREAS) {
+    const cx = Math.max(x0 * S + M, Math.min(x1 * S - M, p.x));
+    const cz = Math.max(z0 * S + M, Math.min(z1 * S - M, p.z));
+    const d = (cx - p.x) ** 2 + (cz - p.z) ** 2;
+    if (d < bd) {
+      bd = d;
+      bx = cx;
+      bz = cz;
+    }
+  }
+  p.x = bx;
+  p.z = bz;
 }
