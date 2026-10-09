@@ -76,6 +76,33 @@ function buildTrack(): Piece[] {
   pieces.push({ file: "construction-barrier.glb", x: X0 - 1.5, z: 0, rot: Math.PI / 2, kit: "city" });
   pieces.push({ file: "construction-barrier.glb", x: X1 + 1.5, z: 0, rot: Math.PI / 2, kit: "city" });
 
+  // ===== DEKORASI KOTA HIDUP (di luar jangkauan mobil) =====
+  // lampu jalan di sepanjang sisi luar lintasan
+  for (let x = -4; x <= 4; x += 2) {
+    city("light-curved.glb", x, Z0 - 1.7, Math.PI);
+    city("light-curved.glb", x, Z1 + 1.7, 0);
+  }
+  // tiang listrik di sisi kiri luar
+  for (let z = -2; z <= 2; z += 2) city("electricity-pole.glb", X0 - 2.4, z);
+  // rambu-rambu dekat tikungan
+  city("road-sign-stop.glb", X1 - 1.8, Z1 - 1.4, Math.PI / 4);
+  city("road-sign-warning.glb", X0 + 1.8, Z0 + 1.4, -Math.PI / 4);
+  city("road-sign-street.glb", X0 + 1.8, Z1 - 1.4, Math.PI / 3);
+  city("sign-highway.glb", X1 + 2.4, Z0 - 2, Math.PI / 2);
+  // lampu lalu lintas dekat garis finis
+  city("traffic-light.glb", 2.4, Z1 + 1.5, Math.PI);
+  // pohon di rumput tengah (tidak bisa ditabrak — di dalam dinding)
+  toy("tree.glb", -3, -1);
+  toy("tree-pine.glb", 0, 0.5);
+  toy("tree.glb", 3, -1);
+  toy("tree-pine.glb", -2, 1);
+  toy("tree-pine.glb", 2, 1);
+  // pohon di sudut-sudut luar
+  toy("tree.glb", -7.5, -5);
+  toy("tree-pine.glb", 7.5, -5);
+  toy("tree.glb", -7.5, 5);
+  toy("tree-pine.glb", 7.5, 5);
+
   return pieces;
 }
 
