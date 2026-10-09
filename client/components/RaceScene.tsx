@@ -82,6 +82,8 @@ function Cars({
   const cars = Array.from(room.state.cars.values());
   const me = cars.find((c) => c.id === room.sessionId);
   const others = cars.filter((c) => c.id !== room.sessionId);
+  // posisi halus mobil lain (diisi OtherCar tiap frame, dibaca MyCar untuk tabrakan)
+  const othersPos = useRef(new Map<string, { x: number; z: number }>());
   return (
     <>
       {me && (
@@ -89,11 +91,12 @@ function Cars({
           car={me}
           input={input}
           poseRef={poseRef}
+          othersPos={othersPos}
           onState={(x, z, angle, speed) => room.send(RACE_MSG.CAR_STATE, { x, z, angle, speed })}
         />
       )}
       {others.map((c: RaceCar) => (
-        <OtherCar key={c.id} car={c} />
+        <OtherCar key={c.id} car={c} othersPos={othersPos} />
       ))}
     </>
   );

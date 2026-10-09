@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -198,11 +198,13 @@ export function MyCar({
   car,
   input,
   poseRef,
+  othersPos,
   onState,
 }: {
   car: RaceCar;
   input: React.MutableRefObject<CarInput>;
   poseRef: React.MutableRefObject<CarPose>;
+  othersPos: React.MutableRefObject<Map<string, { x: number; z: number }>>;
   onState: (x: number, z: number, angle: number, speed: number) => void;
 }) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
@@ -237,6 +239,33 @@ export function MyCar({
     p.x += Math.sin(p.angle) * p.speed * dt;
     p.z += Math.cos(p.angle) * p.speed * dt;
     // dinding tak terlihat: mobil tidak bisa keluar lintasan
+    clampToTrack(p);
+    // tabrakan dengan pemain lain (lingkaran vs lingkaran, sisi-klien)
+    const R = 0.38; // radius tabrakan per mobil
+    for (const [id, o] of othersPos.current.entries()) {
+      const dx = p.x - o.x;
+      const dz = p.z - o.z;
+      const d = Math.hypot(dx, dz);
+      const minD = R * 2;
+      if (d < minD) {
+        let nx: number, nz: number;
+        if (d > 0.0001) {
+          nx = dx / d;
+          nz = dz / d;
+        } else {
+          // tepat bertumpuk (mis. spawn bareng): pisahkan deterministik
+          // berdasarkan urutan id supaya kedua klien mendorong berlawanan arah
+          nx = car.id < id ? -1 : 1;
+          nz = 0;
+        }
+        const overlap = minD - d;
+        p.x += nx * overlap;
+        p.z += nz * overlap;
+        // tabrakan menyerap kecepatan
+        p.speed *= 0.82;
+      }
+    }
+    // jepit lagi setelah dorongan tabrakan
     clampToTrack(p);
     // tinggi mengikuti jembatan layang (tanjakan/dek)
     const y = trackHeight(p.x, p.z);
@@ -280,10 +309,23 @@ export function MyCar({
  * Mobil pemain lain: interpolasi menuju state server supaya
  * tidak patah-patah (server update 10Hz, render 60fps).
  */
-export function OtherCar({ car }: { car: RaceCar }) {
+export function OtherCar({
+  car,
+  othersPos,
+}: {
+  car: RaceCar;
+  othersPos: React.MutableRefObject<Map<string, { x: number; z: number }>>;
+}) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
   const group = useRef<THREE.Group>(null);
   const smooth = useRef({ x: car.x, z: car.z, angle: car.angle });
+
+  // bersihkan dari peta saat keluar
+  useEffect(() => {
+    return () => {
+      othersPos.current.delete(car.id);
+    };
+  }, [car.id, othersPos]);
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -296,6 +338,8 @@ export function OtherCar({ car }: { car: RaceCar }) {
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     s.angle += d * k;
+    // catat posisi halus untuk logika tabrakan MyCar
+    othersPos.current.set(car.id, { x: s.x, z: s.z });
     if (group.current) {
       group.current.position.set(s.x, trackHeight(s.x, s.z), s.z);
       group.current.rotation.y = s.angle + Math.PI;
