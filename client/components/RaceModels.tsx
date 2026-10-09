@@ -5,7 +5,7 @@ import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { RaceCar } from "@kebun-kita/shared";
-import { CAR_SCALE, TRACK_SCALE, clampToTrack } from "@kebun-kita/shared";
+import { CAR_SCALE, GRID, TRACK_SCALE, clampToTrack, trackHeight, trackPitch } from "@kebun-kita/shared";
 
 const TOY = "/models/kenney_toy-car-kit";
 const CITY = "/models/kenney_city-kit-roads";
@@ -28,27 +28,49 @@ interface Piece {
 }
 
 /**
- * Sirkuit: jalan kota (grid 1x1) sebagai lintasan utama,
- * pernak-pernik kit mainan (gerbang finis, cone, koin) sebagai dekorasi.
+ * Sirkuit 15x9: jalan kota (grid 1x1) sebagai lintasan utama,
+ * pernak-pernik kit mainan sebagai dekorasi.
+ *
+ * JEMBATAN LAYANG di jalan lurus atas (x -2..2): jalan menanjak
+ * (road-slant-high), melewati dek jembatan (road-bridge) di atas
+ * jalan kota dekorasi, lalu turun lagi. Tinggi diatur trackHeight().
  *
  * road-bend: rot 0 = Barat+Selatan, +PI/2 = Timur+Selatan,
  *            PI = Timur+Utara, -PI/2 = Barat+Utara
  * (diverifikasi visual 2026-10-09 oleh ferhen)
+ * road-slant-high: rot 0 = menanjak ke +x (diukur dari vertex)
  */
 function buildTrack(): Piece[] {
   const pieces: Piece[] = [];
-  const X0 = -5;
-  const X1 = 5;
-  const Z0 = -3;
-  const Z1 = 3;
-  const city = (file: string, x: number, z: number, rot = 0) =>
-    pieces.push({ file, x, z, rot, kit: "city" });
+  const X0 = -GRID.x; // -7
+  const X1 = GRID.x; // 7
+  const Z0 = -GRID.z; // -4
+  const Z1 = GRID.z; // 4
+  const city = (file: string, x: number, z: number, rot = 0, y = 0) =>
+    pieces.push({ file, x, z, rot, kit: "city", y });
+  const toy = (file: string, x: number, z: number, rot = 0, y = 0) =>
+    pieces.push({ file, x, z, rot, kit: "toy", y });
 
-  // sisi atas & bawah (jalan lurus arah x)
+  // jalan lurus bawah (arah x)
+  for (let x = X0 + 1; x < X1; x++) city("road-straight.glb", x, Z1);
+  // jalan lurus atas: normal kecuali segmen jembatan (x -2..2)
   for (let x = X0 + 1; x < X1; x++) {
-    city("road-straight.glb", x, Z0);
-    city("road-straight.glb", x, Z1);
+    if (x <= -3 || x >= 3) city("road-straight.glb", x, Z0);
   }
+  // jembatan layang: tanjakan barat, dek, tanjakan timur
+  city("road-slant-high.glb", -2, Z0, 0); // menanjak ke +x (timur)
+  city("road-bridge.glb", -1, Z0);
+  city("road-bridge.glb", 0, Z0);
+  city("road-bridge.glb", 1, Z0);
+  city("road-slant-high.glb", 2, Z0, Math.PI); // menanjak ke -x (barat)
+  // pilar penyangga jembatan
+  city("bridge-pillar.glb", -1, Z0);
+  city("bridge-pillar.glb", 1, Z0);
+  // jalan kota dekorasi yang lewat di bawah jembatan (tidak untuk balapan)
+  for (const z of [-6, -5, -3, -2]) city("road-straight.glb", 0, z, Math.PI / 2);
+  // koin di atas jembatan (hadiah!)
+  for (const x of [-1, 0, 1]) toy("item-coin-gold.glb", x, Z0, 0, 0.55);
+
   // sisi kiri & kanan (jalan lurus arah z)
   for (let z = Z0 + 1; z < Z1; z++) {
     city("road-straight.glb", X0, z, Math.PI / 2);
@@ -64,22 +86,20 @@ function buildTrack(): Piece[] {
   pieces.push({ file: "gate-finish.glb", x: 0, z: Z1, rot: 0, kit: "toy" });
 
   // cone mainan di sisi luar tikungan (dekorasi)
-  const toy = (file: string, x: number, z: number, rot = 0) =>
-    pieces.push({ file, x, z, rot, kit: "toy" });
   toy("item-cone.glb", X0 - 1.2, Z0 - 1.2);
   toy("item-cone.glb", X1 + 1.2, Z0 - 1.2);
   toy("item-cone.glb", X1 + 1.2, Z1 + 1.2);
   toy("item-cone.glb", X0 - 1.2, Z1 + 1.2);
-  // koin di jalan lurus atas (dekorasi)
-  for (let x = -2; x <= 2; x++) toy("item-coin-gold.glb", x, Z0, 0);
+  // koin di jalan lurus bawah (dekorasi)
+  for (let x = -4; x <= 4; x++) toy("item-coin-gold.glb", x, Z1, 0);
   // barrier kota di beberapa titik
   pieces.push({ file: "construction-barrier.glb", x: X0 - 1.5, z: 0, rot: Math.PI / 2, kit: "city" });
   pieces.push({ file: "construction-barrier.glb", x: X1 + 1.5, z: 0, rot: Math.PI / 2, kit: "city" });
 
   // ===== DEKORASI KOTA HIDUP (di luar jangkauan mobil) =====
-  // lampu jalan di sepanjang sisi luar lintasan
-  for (let x = -4; x <= 4; x += 2) {
-    city("light-curved.glb", x, Z0 - 1.7, Math.PI);
+  // lampu jalan di sepanjang sisi luar lintasan (lewati x=0 atas: jalan bawah jembatan)
+  for (let x = -6; x <= 6; x += 2) {
+    if (x !== 0) city("light-curved.glb", x, Z0 - 1.7, Math.PI);
     city("light-curved.glb", x, Z1 + 1.7, 0);
   }
   // tiang listrik di sisi kiri luar
@@ -92,16 +112,16 @@ function buildTrack(): Piece[] {
   // lampu lalu lintas dekat garis finis
   city("traffic-light.glb", 2.4, Z1 + 1.5, Math.PI);
   // pohon di rumput tengah (tidak bisa ditabrak — di dalam dinding)
-  toy("tree.glb", -3, -1);
-  toy("tree-pine.glb", 0, 0.5);
-  toy("tree.glb", 3, -1);
-  toy("tree-pine.glb", -2, 1);
-  toy("tree-pine.glb", 2, 1);
+  toy("tree.glb", -4.5, -1.5);
+  toy("tree-pine.glb", 0, 1);
+  toy("tree.glb", 4.5, -1.5);
+  toy("tree-pine.glb", -3, 2);
+  toy("tree-pine.glb", 3, 2);
   // pohon di sudut-sudut luar
-  toy("tree.glb", -7.5, -5);
-  toy("tree-pine.glb", 7.5, -5);
-  toy("tree.glb", -7.5, 5);
-  toy("tree-pine.glb", 7.5, 5);
+  toy("tree.glb", -10, -6.5);
+  toy("tree-pine.glb", 10, -6.5);
+  toy("tree.glb", -10, 6.5);
+  toy("tree-pine.glb", 10, 6.5);
 
   return pieces;
 }
@@ -146,6 +166,7 @@ export interface CarPose {
   z: number;
   angle: number;
   speed: number;
+  y: number;
 }
 
 /**
@@ -166,6 +187,7 @@ export function MyCar({
 }) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
   const group = useRef<THREE.Group>(null);
+  const pitchRef = useRef<THREE.Group>(null);
   // state fisika lokal (ref supaya tidak re-render tiap frame)
   const phys = useRef({ x: car.x, z: car.z, angle: car.angle, speed: 0, steer: 0 });
   const lastSent = useRef(0);
@@ -196,13 +218,19 @@ export function MyCar({
     p.z += Math.cos(p.angle) * p.speed * dt;
     // dinding tak terlihat: mobil tidak bisa keluar lintasan
     clampToTrack(p);
+    // tinggi mengikuti jembatan layang (tanjakan/dek)
+    const y = trackHeight(p.x, p.z);
 
     if (group.current) {
-      group.current.position.set(p.x, 0, p.z);
+      group.current.position.set(p.x, y, p.z);
       // model menghadap -z; putar PI supaya moncong ikut arah hadap
       group.current.rotation.y = p.angle + Math.PI;
       // sedikit miring saat belok (efek arcade)
       group.current.rotation.z = -p.steer * steerFactor * 0.08;
+    }
+    // hidung naik/turun mengikuti tanjakan (di grup dalam, setelah yaw)
+    if (pitchRef.current) {
+      pitchRef.current.rotation.x = trackPitch(p.x, p.z, p.angle);
     }
 
     // tulis pose untuk kamera (60fps, mulus)
@@ -210,6 +238,7 @@ export function MyCar({
     poseRef.current.z = p.z;
     poseRef.current.angle = p.angle;
     poseRef.current.speed = p.speed;
+    poseRef.current.y = y;
 
     const now = performance.now();
     if (now - lastSent.current > 100) {
@@ -220,7 +249,7 @@ export function MyCar({
 
   return (
     <group ref={group} position={[car.x, 0, car.z]}>
-      <group scale={CAR_SCALE}>
+      <group ref={pitchRef} scale={CAR_SCALE}>
         <primitive object={model} />
       </group>
     </group>
@@ -248,13 +277,13 @@ export function OtherCar({ car }: { car: RaceCar }) {
     while (d < -Math.PI) d += Math.PI * 2;
     s.angle += d * k;
     if (group.current) {
-      group.current.position.set(s.x, 0, s.z);
+      group.current.position.set(s.x, trackHeight(s.x, s.z), s.z);
       group.current.rotation.y = s.angle + Math.PI;
     }
   });
 
   return (
-    <group ref={group} position={[car.x, 0, car.z]}>
+    <group ref={group} position={[car.x, trackHeight(car.x, car.z), car.z]}>
       <group scale={CAR_SCALE}>
         <primitive object={model} />
       </group>

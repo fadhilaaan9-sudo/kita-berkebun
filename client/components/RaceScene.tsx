@@ -56,12 +56,14 @@ function ChaseCamera({ poseRef }: { poseRef: React.MutableRefObject<CarPose> }) 
     const p = poseRef.current;
     const fx = Math.sin(p.angle);
     const fz = Math.cos(p.angle);
-    target.current.set(p.x - fx * 7, 4.5, p.z - fz * 7);
+    const camY = 4.5 + p.y;
+    const lookY = 0.5 + p.y;
+    target.current.set(p.x - fx * 7, camY, p.z - fz * 7);
     // damping berbasis dt (independen frame-rate)
     const kp = 1 - Math.exp(-8 * dt);
     const kl = 1 - Math.exp(-12 * dt);
     state.camera.position.lerp(target.current, kp);
-    look.current.set(p.x + fx * 2.5, 0.5, p.z + fz * 2.5);
+    look.current.set(p.x + fx * 2.5, lookY, p.z + fz * 2.5);
     lookSmooth.current.lerp(look.current, kl);
     state.camera.lookAt(lookSmooth.current);
   });

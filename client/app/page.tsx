@@ -87,7 +87,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   // pose mobil sendiri (ditulis 60fps oleh scene, dibaca kamera & HUD)
-  const poseRef = useRef<CarPose>({ x: SPAWN.x, z: SPAWN.z, angle: SPAWN.angle, speed: 0 });
+  const poseRef = useRef<CarPose>({ x: SPAWN.x, z: SPAWN.z, angle: SPAWN.angle, speed: 0, y: 0 });
 
   const attach = (r: Room<RaceState>) => {
     setRoom(r);
