@@ -5,7 +5,7 @@ import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { RaceCar } from "@kebun-kita/shared";
-import { CAR_SCALE, clampToTrack } from "@kebun-kita/shared";
+import { CAR_SCALE, TRACK_SCALE, clampToTrack } from "@kebun-kita/shared";
 
 const TOY = "/models/kenney_toy-car-kit";
 const CITY = "/models/kenney_city-kit-roads";
@@ -87,12 +87,13 @@ function TrackPiece({ piece }: { piece: Piece }) {
 
 export function Track() {
   const pieces = useMemo(buildTrack, []);
+  // skala seluruh lintasan (posisi + ukuran ikut membesar, tetap tersambung)
   return (
-    <>
+    <group scale={TRACK_SCALE}>
       {pieces.map((p, i) => (
         <TrackPiece key={i} piece={p} />
       ))}
-    </>
+    </group>
   );
 }
 

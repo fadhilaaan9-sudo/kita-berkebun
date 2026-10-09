@@ -6,14 +6,26 @@
 export const CAR_SCALE = 0.6;
 
 /**
+ * Skala lintasan: seluruh potongan jalan + dekorasi dibungkus satu grup
+ * yang di-skala, jadi posisi dan ukuran ikut membesar bersamaan dan
+ * tetap tersambung. Batas dinding & spawn dihitung dari skala ini.
+ */
+export const TRACK_SCALE = 2;
+
+const S = TRACK_SCALE;
+
+/**
  * Batas lintasan: sirkuit berbentuk cincin persegi panjang.
- * - Kotak luar: tepi tile terluar (x: -5..5, z: -3..3 -> tepi di +/-5.5, +/-3.5)
+ * - Kotak luar: tepi tile terluar
  * - Lubang dalam: rumput tengah yang tidak boleh dimasuki
  */
-export const TRACK_OUT = { x: 5.5, z: 3.5 };
-export const TRACK_IN = { x: 4.5, z: 2.5 };
+export const TRACK_OUT = { x: 5.5 * S, z: 3.5 * S };
+export const TRACK_IN = { x: 4.5 * S, z: 2.5 * S };
 /** Jarak aman bodi mobil dari tepi (setengah lebar mobil + sedikit). */
 export const WALL_MARGIN = 0.35;
+
+/** Titik spawn: tengah jalan lurus bawah, menghadap +x. */
+export const SPAWN = { x: 0, z: 3 * S, angle: Math.PI / 2 };
 
 /**
  * Dinding tak terlihat (invisible guard rail): jepit posisi ke cincin lintasan.

@@ -6,6 +6,7 @@ import { RaceState } from "@kebun-kita/shared";
 import { VEHICLES, createRace, joinRace, waitForInitialState } from "@/lib/net";
 import RaceScene, { useMySpeed } from "@/components/RaceScene";
 import type { CarPose } from "@/components/RaceModels";
+import { SPAWN } from "@kebun-kita/shared";
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : "Terjadi kesalahan.";
@@ -86,7 +87,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   // pose mobil sendiri (ditulis 60fps oleh scene, dibaca kamera & HUD)
-  const poseRef = useRef<CarPose>({ x: 0, z: 3, angle: Math.PI / 2, speed: 0 });
+  const poseRef = useRef<CarPose>({ x: SPAWN.x, z: SPAWN.z, angle: SPAWN.angle, speed: 0 });
 
   const attach = (r: Room<RaceState>) => {
     setRoom(r);

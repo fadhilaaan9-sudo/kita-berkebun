@@ -3,6 +3,7 @@ import {
   RACE_MSG,
   RaceCar,
   RaceState,
+  SPAWN,
   clampToTrack,
   generateJoinCode,
   sanitizeJoinCode,
@@ -29,10 +30,10 @@ const VALID_VEHICLES = new Set([
   "vehicle-racer-low",
 ]);
 
-/** Titik start (di jalan lurus bawah, sebelum garis finis). */
-const START_X = 0;
-const START_Z = 3;
-const START_ANGLE = Math.PI / 2; // hadap +x (forward = (sin, cos))
+/** Titik start (di jalan lurus bawah, sebelum garis finis) — dari shared. */
+const START_X = SPAWN.x;
+const START_Z = SPAWN.z;
+const START_ANGLE = SPAWN.angle; // hadap +x (forward = (sin, cos))
 
 /**
  * Room balapan MVP: fisika arcade jalan di client (responsif),
