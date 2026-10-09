@@ -59,18 +59,15 @@ function buildTrack(): Piece[] {
   }
   // jembatan layang: tanjakan barat, dek, tanjakan timur
   city("road-slant-high.glb", -2, Z0, 0); // menanjak ke +x (timur)
-  city("road-bridge.glb", -1, Z0);
-  city("road-bridge.glb", 0, Z0);
-  city("road-bridge.glb", 1, Z0);
+  city("road-bridge.glb", -1, Z0, Math.PI/2); // dek jembatan (arah -x)
+  city("road-bridge.glb", 0, Z0, Math.PI/2);
+  city("road-bridge.glb", 1, Z0, Math.PI/2);
   city("road-slant-high.glb", 2, Z0, Math.PI); // menanjak ke -x (barat)
   // pilar penyangga jembatan
   city("bridge-pillar.glb", -1, Z0);
   city("bridge-pillar.glb", 1, Z0);
   // jalan kota dekorasi yang lewat di bawah jembatan (tidak untuk balapan)
-  for (const z of [-6, -5, -3, -2]) city("road-straight.glb", 0, z, Math.PI / 2);
-  // koin di atas jembatan (hadiah!)
-  for (const x of [-1, 0, 1]) toy("item-coin-gold.glb", x, Z0, 0, 0.55);
-
+  
   // sisi kiri & kanan (jalan lurus arah z)
   for (let z = Z0 + 1; z < Z1; z++) {
     city("road-straight.glb", X0, z, Math.PI / 2);
