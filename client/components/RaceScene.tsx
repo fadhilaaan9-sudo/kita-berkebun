@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Room } from "colyseus.js";
 import { RACE_MSG, RaceState, type RaceCar } from "@kebun-kita/shared";
-import { MyCar, OtherCar, Track, type CarInput } from "./RaceModels";
+import { MyCar, OtherCar, Track, type CarInput, type CarPose } from "./RaceModels";
 
 function useKeys(input: React.MutableRefObject<CarInput>) {
   useEffect(() => {
@@ -32,25 +32,41 @@ function useKeys(input: React.MutableRefObject<CarInput>) {
   }, [input]);
 }
 
-/** Kamera mengikuti dari belakang mobil pemain. */
-function ChaseCamera({ room }: { room: Room<RaceState> }) {
+/**
+ * Kamera mengikuti dari belakang mobil pemain.
+ * Membaca poseRef (ditulis MyCar 60fps) — JANGAN baca dari state server
+ * yang cuma update 10Hz, itu yang bikin gerakan kelihatan patah-patah.
+ */
+function ChaseCamera({ poseRef }: { poseRef: React.MutableRefObject<CarPose> }) {
   const target = useRef(new THREE.Vector3());
   const look = useRef(new THREE.Vector3());
-  useFrame((state) => {
-    const me = room.state?.cars.get(room.sessionId);
-    if (!me) return;
-    const fx = Math.sin(me.angle);
-    const fz = Math.cos(me.angle);
-    // Perkiraan posisi halus: pakai state server (cukup untuk MVP)
-    target.current.set(me.x - fx * 7, 4.5, me.z - fz * 7);
-    state.camera.position.lerp(target.current, 0.12);
-    look.current.set(me.x + fx * 2, 0.5, me.z + fz * 2);
-    state.camera.lookAt(look.current);
+  const lookSmooth = useRef(new THREE.Vector3(0, 0.5, 5));
+  useFrame((state, rawDt) => {
+    const dt = Math.min(rawDt, 0.05);
+    const p = poseRef.current;
+    const fx = Math.sin(p.angle);
+    const fz = Math.cos(p.angle);
+    target.current.set(p.x - fx * 7, 4.5, p.z - fz * 7);
+    // damping berbasis dt (independen frame-rate)
+    const kp = 1 - Math.exp(-8 * dt);
+    const kl = 1 - Math.exp(-12 * dt);
+    state.camera.position.lerp(target.current, kp);
+    look.current.set(p.x + fx * 2.5, 0.5, p.z + fz * 2.5);
+    lookSmooth.current.lerp(look.current, kl);
+    state.camera.lookAt(lookSmooth.current);
   });
   return null;
 }
 
-function Cars({ room, input }: { room: Room<RaceState>; input: React.MutableRefObject<CarInput> }) {
+function Cars({
+  room,
+  input,
+  poseRef,
+}: {
+  room: Room<RaceState>;
+  input: React.MutableRefObject<CarInput>;
+  poseRef: React.MutableRefObject<CarPose>;
+}) {
   const cars = Array.from(room.state.cars.values());
   const me = cars.find((c) => c.id === room.sessionId);
   const others = cars.filter((c) => c.id !== room.sessionId);
@@ -60,6 +76,7 @@ function Cars({ room, input }: { room: Room<RaceState>; input: React.MutableRefO
         <MyCar
           car={me}
           input={input}
+          poseRef={poseRef}
           onState={(x, z, angle, speed) => room.send(RACE_MSG.CAR_STATE, { x, z, angle, speed })}
         />
       )}
@@ -70,25 +87,30 @@ function Cars({ room, input }: { room: Room<RaceState>; input: React.MutableRefO
   );
 }
 
-/** Tampilkan kecepatan pemain sendiri (diambil dari state fisika via event). */
-export function useMySpeed(room: Room<RaceState>) {
+/** Kecepatan pemain sendiri untuk HUD (dari pose lokal, mulus). */
+export function useMySpeed(poseRef: React.MutableRefObject<CarPose>) {
   const [speed, setSpeed] = useState(0);
   useEffect(() => {
     let last = 0;
     const id = setInterval(() => {
-      const me = room.state?.cars.get(room.sessionId);
-      const s = me ? Math.abs(me.speed) : 0;
-      if (Math.abs(s - last) > 0.3) {
+      const s = Math.abs(poseRef.current.speed);
+      if (Math.abs(s - last) > 0.2) {
         last = s;
         setSpeed(s);
       }
-    }, 200);
+    }, 150);
     return () => clearInterval(id);
-  }, [room]);
+  }, [poseRef]);
   return speed;
 }
 
-export default function RaceScene({ room }: { room: Room<RaceState> }) {
+export default function RaceScene({
+  room,
+  poseRef,
+}: {
+  room: Room<RaceState>;
+  poseRef: React.MutableRefObject<CarPose>;
+}) {
   const input = useRef<CarInput>({ fwd: false, back: false, left: false, right: false });
   useKeys(input);
   const [, setRev] = useState(0);
@@ -110,9 +132,9 @@ export default function RaceScene({ room }: { room: Room<RaceState> }) {
       </mesh>
       <Suspense fallback={null}>
         <Track />
-        <Cars room={room} input={input} />
+        <Cars room={room} input={input} poseRef={poseRef} />
       </Suspense>
-      <ChaseCamera room={room} />
+      <ChaseCamera poseRef={poseRef} />
     </Canvas>
   );
 }

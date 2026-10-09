@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Room } from "colyseus.js";
 import { RaceState } from "@kebun-kita/shared";
 import { VEHICLES, createRace, joinRace, waitForInitialState } from "@/lib/net";
 import RaceScene, { useMySpeed } from "@/components/RaceScene";
+import type { CarPose } from "@/components/RaceModels";
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : "Terjadi kesalahan.";
@@ -20,12 +21,14 @@ function vehicleLabel(v: string): string {
 
 function GameHud({
   room,
+  poseRef,
   onLeave,
 }: {
   room: Room<RaceState>;
+  poseRef: React.MutableRefObject<CarPose>;
   onLeave: () => void;
 }) {
-  const speed = useMySpeed(room);
+  const speed = useMySpeed(poseRef);
   const [roomCode, setRoomCode] = useState("");
   const [cars, setCars] = useState<{ id: string; name: string }[]>([]);
 
@@ -82,6 +85,8 @@ export default function Home() {
   const [room, setRoom] = useState<Room<RaceState> | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // pose mobil sendiri (ditulis 60fps oleh scene, dibaca kamera & HUD)
+  const poseRef = useRef<CarPose>({ x: 0, z: 3, angle: Math.PI / 2, speed: 0 });
 
   const attach = (r: Room<RaceState>) => {
     setRoom(r);
@@ -212,8 +217,8 @@ export default function Home() {
 
   return (
     <main className="h-screen w-screen relative">
-      <RaceScene room={room} />
-      <GameHud room={room} onLeave={handleLeave} />
+      <RaceScene room={room} poseRef={poseRef} />
+      <GameHud room={room} poseRef={poseRef} onLeave={handleLeave} />
     </main>
   );
 }

@@ -110,28 +110,35 @@ export interface CarInput {
   right: boolean;
 }
 
-/** Mobil pemain sendiri: fisika arcade lokal + kirim state ke server. */
+/** Posisi mobil di memori lokal (ditulis 60fps oleh MyCar, dibaca kamera). */
+export interface CarPose {
+  x: number;
+  z: number;
+  angle: number;
+  speed: number;
+}
+
+/**
+ * Mobil pemain sendiri: fisika arcade lokal + kirim state ke server.
+ * Menulis pose ke poseRef tiap frame supaya kamera bisa ngikutin
+ * dengan mulus (jangan baca dari state server yang cuma update 10Hz).
+ */
 export function MyCar({
   car,
   input,
+  poseRef,
   onState,
 }: {
   car: RaceCar;
   input: React.MutableRefObject<CarInput>;
+  poseRef: React.MutableRefObject<CarPose>;
   onState: (x: number, z: number, angle: number, speed: number) => void;
 }) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
   const group = useRef<THREE.Group>(null);
   // state fisika lokal (ref supaya tidak re-render tiap frame)
-  const phys = useRef({ x: car.x, z: car.z, angle: car.angle, speed: 0 });
+  const phys = useRef({ x: car.x, z: car.z, angle: car.angle, speed: 0, steer: 0 });
   const lastSent = useRef(0);
-
-  // sinkron posisi awal dari server (sekali)
-  const synced = useRef(false);
-  if (!synced.current) {
-    synced.current = true;
-    phys.current = { x: car.x, z: car.z, angle: car.angle, speed: 0 };
-  }
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -148,10 +155,11 @@ export function MyCar({
     }
     p.speed = Math.max(MAX_REVERSE, Math.min(MAX_SPEED, p.speed));
 
-    // belok (makin cepat makin susah belok tajam)
-    const steerDir = (inp.left ? 1 : 0) - (inp.right ? 1 : 0);
+    // belok: steering dihaluskan (tidak langsung patah)
+    const steerTarget = (inp.left ? 1 : 0) - (inp.right ? 1 : 0);
+    p.steer += (steerTarget - p.steer) * Math.min(1, dt * 10);
     const steerFactor = Math.min(1, Math.abs(p.speed) / 4);
-    p.angle += steerDir * STEER_MAX * steerFactor * Math.sign(p.speed || 1) * dt * 2.2;
+    p.angle += p.steer * STEER_MAX * steerFactor * Math.sign(p.speed || 1) * dt * 2.2;
 
     // gerak
     p.x += Math.sin(p.angle) * p.speed * dt;
@@ -162,8 +170,14 @@ export function MyCar({
       // model menghadap -z; putar PI supaya moncong ikut arah hadap
       group.current.rotation.y = p.angle + Math.PI;
       // sedikit miring saat belok (efek arcade)
-      group.current.rotation.z = -steerDir * steerFactor * 0.06;
+      group.current.rotation.z = -p.steer * steerFactor * 0.08;
     }
+
+    // tulis pose untuk kamera (60fps, mulus)
+    poseRef.current.x = p.x;
+    poseRef.current.z = p.z;
+    poseRef.current.angle = p.angle;
+    poseRef.current.speed = p.speed;
 
     const now = performance.now();
     if (now - lastSent.current > 100) {
@@ -179,11 +193,34 @@ export function MyCar({
   );
 }
 
-/** Mobil pemain lain: render dari state server (tanpa fisika lokal). */
+/**
+ * Mobil pemain lain: interpolasi menuju state server supaya
+ * tidak patah-patah (server update 10Hz, render 60fps).
+ */
 export function OtherCar({ car }: { car: RaceCar }) {
   const model = useModel(`${TOY}/${car.vehicle}.glb`);
+  const group = useRef<THREE.Group>(null);
+  const smooth = useRef({ x: car.x, z: car.z, angle: car.angle });
+
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.05);
+    const s = smooth.current;
+    const k = Math.min(1, dt * 8);
+    s.x += (car.x - s.x) * k;
+    s.z += (car.z - s.z) * k;
+    // lerp sudut via jalur terpendek
+    let d = car.angle - s.angle;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    s.angle += d * k;
+    if (group.current) {
+      group.current.position.set(s.x, 0, s.z);
+      group.current.rotation.y = s.angle + Math.PI;
+    }
+  });
+
   return (
-    <group position={[car.x, 0, car.z]} rotation={[0, car.angle + Math.PI, 0]}>
+    <group ref={group} position={[car.x, 0, car.z]}>
       <primitive object={model} />
     </group>
   );
