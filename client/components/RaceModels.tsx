@@ -16,6 +16,49 @@ function useModel(url: string) {
   return useMemo(() => gltf.scene.clone(), [gltf]);
 }
 
+/**
+ * Nama pemain melayang di atas mobil (sprite selalu menghadap kamera).
+ * Dibuat dari canvas 2D → texture, ringan untuk 8 pemain.
+ */
+function NameTag({ name, highlight }: { name: string; highlight?: boolean }) {
+  const { texture, aspect } = useMemo(() => {
+    const font = "bold 44px system-ui, -apple-system, sans-serif";
+    const measure = document.createElement("canvas").getContext("2d")!;
+    measure.font = font;
+    const w = Math.ceil(measure.measureText(name).width) + 48;
+    const h = 72;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    ctx.font = font;
+    ctx.textBaseline = "middle";
+    // pil latar
+    ctx.fillStyle = highlight ? "rgba(234, 88, 12, 0.85)" : "rgba(0, 0, 0, 0.55)";
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w, h, 36);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(name, w / 2, h / 2 + 2);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return { texture, aspect: w / h };
+  }, [name, highlight]);
+
+  // bersihkan texture saat nama berubah/unmount
+  useEffect(() => {
+    return () => texture.dispose();
+  }, [texture]);
+
+  const height = 0.5;
+  return (
+    <sprite position={[0, 1.05, 0]} scale={[height * aspect, height, 1]} renderOrder={10}>
+      <spriteMaterial map={texture} transparent depthTest={false} />
+    </sprite>
+  );
+}
+
 /* ================= LINTASAN ================= */
 
 interface Piece {
@@ -307,6 +350,7 @@ export function MyCar({
       <group ref={pitchRef} scale={CAR_SCALE}>
         <primitive object={model} />
       </group>
+      <NameTag name={car.name} highlight />
     </group>
   );
 }
@@ -357,6 +401,7 @@ export function OtherCar({
       <group scale={CAR_SCALE}>
         <primitive object={model} />
       </group>
+      <NameTag name={car.name} />
     </group>
   );
 }
