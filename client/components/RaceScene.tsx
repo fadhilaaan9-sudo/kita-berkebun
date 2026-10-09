@@ -36,12 +36,22 @@ function useKeys(input: React.MutableRefObject<CarInput>) {
  * Kamera mengikuti dari belakang mobil pemain.
  * Membaca poseRef (ditulis MyCar 60fps) — JANGAN baca dari state server
  * yang cuma update 10Hz, itu yang bikin gerakan kelihatan patah-patah.
+ *
+ * Mode debug: ?view=top untuk lihat lintasan dari atas.
  */
 function ChaseCamera({ poseRef }: { poseRef: React.MutableRefObject<CarPose> }) {
   const target = useRef(new THREE.Vector3());
   const look = useRef(new THREE.Vector3());
   const lookSmooth = useRef(new THREE.Vector3(0, 0.5, 5));
+  const topDown =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("view") === "top";
   useFrame((state, rawDt) => {
+    if (topDown) {
+      state.camera.position.set(0, 32, 0.01);
+      state.camera.lookAt(0, 0, 0);
+      return;
+    }
     const dt = Math.min(rawDt, 0.05);
     const p = poseRef.current;
     const fx = Math.sin(p.angle);
