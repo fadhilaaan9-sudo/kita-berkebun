@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server, matchMaker } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { FarmRoom } from "./rooms/FarmRoom.js";
+import { RaceRoom } from "./rooms/RaceRoom.js";
 
 const port = Number(process.env.PORT) || 2567;
 const app = express();
@@ -36,6 +37,16 @@ app.get("/api/farm/:code/exists", async (req, res) => {
   res.json({ exists });
 });
 
+// Versi balapan: cek kode room race sebelum join.
+app.get("/api/race/:code/exists", async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const rooms = await matchMaker.query({ name: "race_room" });
+  const exists = rooms.some(
+    (room) => (room.metadata as { roomCode?: string } | undefined)?.roomCode === code,
+  );
+  res.json({ exists });
+});
+
 const httpServer = createServer(app);
 const gameServer = new Server({
   transport: new WebSocketTransport({ server: httpServer }),
@@ -47,6 +58,7 @@ const gameServer = new Server({
 // dibuat), jadi host wajib mengirim farmCode asli di opsi create —
 // kode yang di-generate di dalam onCreate tidak akan ikut tercocokkan.
 gameServer.define("farm_room", FarmRoom).filterBy(["farmCode"]);
+gameServer.define("race_room", RaceRoom).filterBy(["roomCode"]);
 
 await gameServer.listen(port);
 console.log(`[kebun-kita] server listening on ws://localhost:${port}`);

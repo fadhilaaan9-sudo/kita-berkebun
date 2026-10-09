@@ -56,3 +56,23 @@ export class FarmState extends Schema {
   @type({ map: Plot }) plots = new MapSchema<Plot>();
   @type({ map: Animal }) animals = new MapSchema<Animal>();
 }
+
+/* ================= RACING (MVP) ================= */
+
+export class RaceCar extends Schema {
+  @type("string") id: string = "";
+  @type("string") name: string = "";
+  /** posisi di dunia */
+  @type("number") x: number = 0;
+  @type("number") z: number = 0;
+  /** arah hadap (radian). forward = (sin(angle), cos(angle)) di bidang XZ */
+  @type("number") angle: number = 0;
+  @type("number") speed: number = 0;
+  /** nama file model, mis. "vehicle-racer" */
+  @type("string") vehicle: string = "vehicle-racer";
+}
+
+export class RaceState extends Schema {
+  @type("string") roomCode: string = "";
+  @type({ map: RaceCar }) cars = new MapSchema<RaceCar>();
+}

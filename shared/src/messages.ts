@@ -28,3 +28,16 @@ export interface PlantPayload {
 export interface AnimalPayload {
   animalId: string;
 }
+
+/** Pesan untuk mode balapan. */
+export const RACE_MSG = {
+  /** client -> server: posisi mobil (dikirim rutin saat menyetir) */
+  CAR_STATE: "car_state",
+} as const;
+
+export interface CarStatePayload {
+  x: number;
+  z: number;
+  angle: number;
+  speed: number;
+}
