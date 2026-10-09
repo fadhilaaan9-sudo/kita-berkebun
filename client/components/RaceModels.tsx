@@ -30,9 +30,9 @@ interface Piece {
  * Sirkuit: jalan kota (grid 1x1) sebagai lintasan utama,
  * pernak-pernik kit mainan (gerbang finis, cone, koin) sebagai dekorasi.
  *
- * road-bend: rot 0 = Barat+Utara, +PI/2 = Utara+Timur,
- *            PI = Timur+Selatan, -PI/2 = Selatan+Barat
- * (diverifikasi visual 2026-10-09)
+ * road-bend: rot 0 = Barat+Selatan, +PI/2 = Timur+Selatan,
+ *            PI = Timur+Utara, -PI/2 = Barat+Utara
+ * (diverifikasi visual 2026-10-09 oleh ferhen)
  */
 function buildTrack(): Piece[] {
   const pieces: Piece[] = [];
