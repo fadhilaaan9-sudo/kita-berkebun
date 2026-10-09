@@ -30,8 +30,9 @@ interface Piece {
  * Sirkuit: jalan kota (grid 1x1) sebagai lintasan utama,
  * pernak-pernik kit mainan (gerbang finis, cone, koin) sebagai dekorasi.
  *
- * road-bend default menghubungkan sisi barat+utara; rotasi:
- *   0 = B+U, -PI/2 = U+T, PI = T+S, PI/2 = S+B
+ * road-bend: rot 0 = Barat+Utara, +PI/2 = Utara+Timur,
+ *            PI = Timur+Selatan, -PI/2 = Selatan+Barat
+ * (diverifikasi visual 2026-10-09)
  */
 function buildTrack(): Piece[] {
   const pieces: Piece[] = [];
@@ -52,11 +53,11 @@ function buildTrack(): Piece[] {
     city("road-straight.glb", X0, z, Math.PI / 2);
     city("road-straight.glb", X1, z, Math.PI / 2);
   }
-  // 4 tikungan
-  city("road-bend.glb", X0, Z0, Math.PI); // kiri-atas: T+S
-  city("road-bend.glb", X1, Z0, Math.PI / 2); // kanan-atas: S+B
-  city("road-bend.glb", X1, Z1, 0); // kanan-bawah: B+U
-  city("road-bend.glb", X0, Z1, -Math.PI / 2); // kiri-bawah: U+T
+  // 4 tikungan (sudah diverifikasi)
+  city("road-bend.glb", X0, Z0, Math.PI); // kiri-atas: Timur+Selatan
+  city("road-bend.glb", X1, Z0, -Math.PI / 2); // kanan-atas: Barat+Selatan
+  city("road-bend.glb", X1, Z1, 0); // kanan-bawah: Barat+Utara
+  city("road-bend.glb", X0, Z1, Math.PI / 2); // kiri-bawah: Timur+Utara
 
   // garis start/finis (kit mainan) di jalan lurus bawah
   pieces.push({ file: "gate-finish.glb", x: 0, z: Z1, rot: 0, kit: "toy" });
